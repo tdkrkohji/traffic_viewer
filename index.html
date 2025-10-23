@@ -387,42 +387,16 @@ async function fetchAndRender(){
     Object.values(bodies).forEach(tb => { if(tb) tb.innerHTML = ""; });
 
     // 全列車を横断して車両交換判定のためにカウント（TS+TB）
-    const currentTrains = new Set();
-[data.TS, data.TB].forEach(section => {
-  if (!section) return;
-  section.forEach(st => {
-    (st.ps || []).forEach(p => {
-      const trNo = (p.tr || "").trim();
-      if (trNo) currentTrains.add(trNo);
-    });
-  });
-});
+    const trainCount = {};
+    function countAll(section){
+      if(!section) return;
+      section.forEach(st => (st.ps || []).forEach(p => {
+        const tr = (p.tr || "").trim();
+        if(tr) trainCount[tr] = (trainCount[tr] || 0) + 1;
+      }));
+    }
+    countAll(data.TS); countAll(data.TB);
 
-/* 前回の列車一覧を取得 */
-const prevTrains = JSON.parse(localStorage.getItem("traffic_prev_trains") || "[]");
-const prevSet = new Set(prevTrains);
-
-/* 2回連続で存在している列車を抽出 */
-const exchangeCandidates = [];
-currentTrains.forEach(trNo => {
-  if (prevSet.has(trNo)) {
-    exchangeCandidates.push(trNo);
-  }
-});
-
-/* ローカルストレージに今回のリストを保存（次回比較用） */
-localStorage.setItem("traffic_prev_trains", JSON.stringify(Array.from(currentTrains)));
-
-/* 備考欄で使用するための exchangeSet を構築 */
-const exchangeSet = new Set(exchangeCandidates);
-
-/* ↓ 備考生成部にこの条件を追加してください（既存の if(trainCount[trNo] > 1)〜 を置換） */
-if (exchangeSet.has(trNo)) {
-  remarks.push("車両交換予定");
-  addNotifUnique("exchange", `${trNo}：車両交換予定`);
-}
-
-/* ▲ 新しい車両交換予定判定部分 ▲ */
     // 通知用セット
     const delaySet = new Set();
     const exchangeSet = new Set();
