@@ -6,15 +6,20 @@
 <style>
   body { font-family: "Segoe UI", sans-serif; text-align: center; background: #f8f8f8; margin-bottom: 50px; }
   h1, h2 { margin-top: 30px; }
-  table { border-collapse: collapse; margin: 20px auto; width: 90%; max-width: 1000px; background: #fff; }
+  table { border-collapse: collapse; margin: 20px auto; width: 95%; max-width: 1100px; background: #fff; }
   th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: center; }
-  th { background: #eee; }
-  .tokkyu { color: #fff; background: #d32f2f; }     /* 特急 → 赤 */
-  .kyuko { color: #fff; background: #388e3c; }       /* 急行 → 緑 */
-  .kaisoku { color: #fff; background: #1976d2; }     /* 快速 → 青 */
-  .kukan { color: #000; background: #fff176; }       /* 区間急行 → 黄色 */
-  .kakutei { color: #000; background: #e0e0e0; }     /* 各停 → 灰色 */
+  th { background: #eee; cursor: pointer; position: sticky; top: 0; }
+  tr:hover { background: #f1f1f1; }
+  .tokkyu { color: #fff; background: #d32f2f; }
+  .kyuko { color: #fff; background: #388e3c; }
+  .kaisoku { color: #fff; background: #1976d2; }
+  .kukan { color: #000; background: #fff176; }
+  .kakutei { color: #000; background: #e0e0e0; }
   #updateTime, #localTime { margin: 5px 0; font-size: 14px; color: #555; }
+  .sortable::after { content: " ↕"; font-size: 12px; color: #666; }
+  #delayNotice { background: #fff3e0; border: 1px solid #ff9800; margin: 10px auto; padding: 10px; width: 90%; max-width: 800px; border-radius: 6px; }
+  #delayNotice h3 { margin: 0 0 8px; color: #e65100; }
+  #delayList { list-style: none; padding: 0; margin: 0; }
 </style>
 </head>
 <body>
@@ -22,14 +27,39 @@
 <p id="updateTime">データ更新中...</p>
 <p id="localTime">現在時刻: --:--:--</p>
 
-<h2>🚆 京王線・相模原線</h2>
+<div id="delayNotice" style="display:none;">
+  <h3>🚨 遅延通知（15分以上）</h3>
+  <ul id="delayList"></ul>
+</div>
+
+<h2>京王線・相模原線</h2>
 <table id="keioTable">
-  <tr><th>列車番号</th><th>種別</th><th>上下</th><th>現在位置</th><th>行先</th><th>両数</th><th>番線</th><th>遅れ</th></tr>
+  <tr>
+    <th class="sortable">上下</th>
+    <th class="sortable">列車番号</th>
+    <th class="sortable">行先</th>
+    <th class="sortable">種別</th>
+    <th class="sortable">両数</th>
+    <th class="sortable">現在位置</th>
+    <th class="sortable">番線</th>
+    <th class="sortable">遅れ</th>
+    <th>備考</th>
+  </tr>
 </table>
 
-<h2>🚋 井の頭線</h2>
+<h2>井の頭線</h2>
 <table id="inokTable">
-  <tr><th>列車番号</th><th>種別</th><th>上下</th><th>現在位置</th><th>行先</th><th>両数</th><th>番線</th><th>遅れ</th></tr>
+  <tr>
+    <th class="sortable">上下</th>
+    <th class="sortable">列車番号</th>
+    <th class="sortable">行先</th>
+    <th class="sortable">種別</th>
+    <th class="sortable">両数</th>
+    <th class="sortable">現在位置</th>
+    <th class="sortable">番線</th>
+    <th class="sortable">遅れ</th>
+    <th>備考</th>
+  </tr>
 </table>
 
 <script>
@@ -55,6 +85,7 @@ const syMap = {
   11:{name:"ライナー", class:"tokkyu"}
 };
 
+// 現在時刻を更新
 function updateLocalTime() {
   const now = new Date();
   const h = String(now.getHours()).padStart(2,"0");
@@ -63,12 +94,35 @@ function updateLocalTime() {
   document.getElementById("localTime").textContent = `現在時刻: ${h}:${m}:${s}`;
 }
 
+// --- 遅延通知データ保持 ---
+function loadDelayData() {
+  const today = new Date();
+  const key = "delayData_" + today.toISOString().split("T")[0];
+  const saved = localStorage.getItem(key);
+  if (saved) return JSON.parse(saved);
+  return { lastReset: Date.now(), list: [] };
+}
+
+function saveDelayData(data) {
+  const today = new Date();
+  const key = "delayData_" + today.toISOString().split("T")[0];
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+function resetIfAfter115() {
+  const now = new Date();
+  if (now.getHours() === 1 && now.getMinutes() >= 15) {
+    localStorage.clear();
+  }
+}
+
+// --- メイン処理 ---
 async function fetchData() {
   try {
     const res = await fetch("https://i.opentidkeio.jp/data/traffic_info.json?cache=" + Date.now());
     const data = await res.json();
 
-    // --- 更新時刻 ---
+    // 更新時刻
     const t = data.up?.[0]?.dt?.[0];
     if (t) {
       const hh = String(parseInt(t.hh) % 24).padStart(2,"0");
@@ -76,11 +130,12 @@ async function fetchData() {
         `データ最終更新: ${t.yy}/${t.mt}/${t.dy} ${hh}:${t.mm}:${t.ss}`;
     }
 
-    // テーブル初期化
     const keioTable = document.getElementById("keioTable");
     const inokTable = document.getElementById("inokTable");
-    keioTable.innerHTML = `<tr><th>列車番号</th><th>種別</th><th>上下</th><th>現在位置</th><th>行先</th><th>両数</th><th>番線</th><th>遅れ</th></tr>`;
-    inokTable.innerHTML = `<tr><th>列車番号</th><th>種別</th><th>上下</th><th>現在位置</th><th>行先</th><th>両数</th><th>番線</th><th>遅れ</th></tr>`;
+    keioTable.innerHTML = keioTable.rows[0].outerHTML;
+    inokTable.innerHTML = inokTable.rows[0].outerHTML;
+
+    const allTrains = [];
 
     function addRows(section, table) {
       section.forEach(st => {
@@ -96,24 +151,91 @@ async function fetchData() {
             "不明";
           const updown = parseInt(id.slice(1)) % 2 === 0 ? "上り" : "下り";
           const delay = p.dl === "00" ? "平常" : p.dl + "分遅れ";
-          const row = `<tr><td>${trNo}</td><td class="${sy.class}">${sy.name}</td><td>${updown}</td><td>${pos}</td><td>${ik}</td><td>${p.sr}</td><td>${p.bs}</td><td>${delay}</td></tr>`;
-          table.insertAdjacentHTML("beforeend", row);
+          allTrains.push({table, trNo, sy, updown, pos, ik, sr:p.sr, bs:p.bs, delay, delayNum: parseInt(p.dl)});
         });
       });
     }
 
-    if (data.TS) addRows(data.TS, keioTable);  // 京王線・相模原線
-    if (data.TB) addRows(data.TB, inokTable);  // 井の頭線
+    if (data.TS) addRows(data.TS, keioTable);
+    if (data.TB) addRows(data.TB, inokTable);
+
+    // 備考判定 & 遅延通知処理
+    const trCount = {};
+    allTrains.forEach(t => trCount[t.trNo] = (trCount[t.trNo] || 0) + 1);
+    let delayData = loadDelayData();
+
+    allTrains.forEach(t => {
+      let remarks = "";
+      if (t.sy.name === "特急" && t.sr === "8") remarks = "特急（8両編成）";
+      if (trCount[t.trNo] > 1) remarks += (remarks ? "／" : "") + "車両交換予定";
+      if (t.delayNum >= 15) {
+        if (!delayData.list.find(x => x.trNo === t.trNo)) {
+          delayData.list.push({ trNo: t.trNo, delay: t.delay, time: new Date().toLocaleTimeString() });
+        }
+      }
+      const row = `<tr>
+        <td>${t.updown}</td>
+        <td>${t.trNo}</td>
+        <td>${t.ik}</td>
+        <td class="${t.sy.class}">${t.sy.name}</td>
+        <td>${t.sr}</td>
+        <td>${t.pos}</td>
+        <td>${t.bs}</td>
+        <td>${t.delay}</td>
+        <td>${remarks}</td>
+      </tr>`;
+      t.table.insertAdjacentHTML("beforeend", row);
+    });
+
+    // 通知表示
+    const noticeBox = document.getElementById("delayNotice");
+    const list = document.getElementById("delayList");
+    list.innerHTML = "";
+    if (delayData.list.length > 0) {
+      noticeBox.style.display = "block";
+      delayData.list.forEach(d => {
+        const li = document.createElement("li");
+        li.textContent = `${d.trNo}列車 (${d.delay}) [記録時刻 ${d.time}]`;
+        list.appendChild(li);
+      });
+    } else {
+      noticeBox.style.display = "none";
+    }
+
+    saveDelayData(delayData);
+    resetIfAfter115();
+
   } catch (e) {
     document.getElementById("updateTime").textContent = "更新失敗：" + e.message;
   }
 }
 
-// 初回実行 & 1秒ごと自動更新
+// 並び替え
+function makeSortable(tableId) {
+  const table = document.getElementById(tableId);
+  const headers = table.querySelectorAll("th.sortable");
+  headers.forEach((th, idx) => {
+    th.addEventListener("click", () => {
+      const rows = Array.from(table.querySelectorAll("tr:nth-child(n+2)"));
+      const asc = !th.classList.contains("asc");
+      headers.forEach(h => h.classList.remove("asc", "desc"));
+      th.classList.add(asc ? "asc" : "desc");
+      rows.sort((a, b) => {
+        const A = a.children[idx].textContent;
+        const B = b.children[idx].textContent;
+        return asc ? A.localeCompare(B, "ja") : B.localeCompare(A, "ja");
+      });
+      rows.forEach(r => table.appendChild(r));
+    });
+  });
+}
+
 fetchData();
 setInterval(fetchData, 1000);
 setInterval(updateLocalTime, 1000);
 updateLocalTime();
+makeSortable("keioTable");
+makeSortable("inokTable");
 </script>
 </body>
 </html>
