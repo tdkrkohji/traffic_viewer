@@ -23,7 +23,7 @@ jobs:
       - name: サイトのHTMLを取得
         run: |
           timestamp=$(date -u +"%Y-%m-%d_%H-%M-%S")
-          curl -s https://<あなたのユーザー名>.github.io/<リポジトリ名>/ -o history/${timestamp}.html
+          curl -s https://tdkrkohji.github.io/<リポジトリ名>/ -o history/${timestamp}.html
 
       - name: 変更をコミットしてプッシュ
         run: |
