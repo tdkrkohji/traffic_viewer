@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>京王線・井の頭線 在線状況</title>
+<style>
+  body { font-family: "Segoe UI", sans-serif; text-align: center; background: #f8f8f8; margin-bottom: 120px; }
+  h1, h2 { margin-top: 30px; }
+  table { border-collapse: collapse; margin: 10px auto; width: 95%; max-width: 1000px; background: #fff; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: center; }
+  th { background: #eee; cursor: pointer; }
+  tr:hover { background: #fafafa; }
+
+  /* 種別カラー */
+  .tokkyu { color: #fff; background: #d32f2f; }
+  .kyuko { color: #fff; background: #388e3c; }
+  .kaisoku { color: #fff; background: #1976d2; }
+  .kukan { color: #000; background: #fff176; }
+  .kakutei { color: #000; background: #e0e0e0; }
+
+  /* タブ切替デザイン */
+  .tab-buttons {
+    display: flex; justify-content: center; border-bottom: 2px solid #ccc; margin: 10px auto; width: 95%; max-width: 1000px;
+  }
+  .tab-buttons button {
+    flex: 1; border: none; background: none; padding: 10px; font-size: 16px; cursor: pointer;
+    border-bottom: 3px solid transparent; transition: all 0.2s ease;
+  }
+  .tab-buttons button:hover { background: #f3f3f3; }
+  .tab-buttons button.active { border-bottom: 3px solid #1976d2; color: #1976d2; font-weight: bold; }
+
+  /* 通知欄 */
+  #notification {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #fff3cd; color: #000; border-top: 2px solid #f0ad4e;
+    padding: 10px; font-size: 15px; text-align: left;
+    max-height: 120px; overflow-y: auto;
+  }
+  #notification h3 { margin: 0 0 5px; font-size: 16px; color: #d9534f; text-align: center; }
+  #notification ul { list-style: none; padding: 0; margin: 0; }
+  #notification li { padding: 3px 0; }
+
+  #updateTime, #localTime { margin: 5px 0; font-size: 14px; color: #555; }
+</style>
+</head>
+<body>
+<h1>京王線・井の頭線 在線状況</h1>
+<p id="updateTime">データ更新中...</p>
+<p id="localTime">現在時刻: --:--:--</p>
+
+<!-- 京王線 -->
+<h2>京王線・相模原線</h2>
+<div class="tab-buttons" id="filterKeio">
+  <button data-filter="all" class="active">全て</button>
+  <button data-filter="上り">上り</button>
+  <button data-filter="下り">下り</button>
+</div>
+<table id="keioTable">
+  <tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>
+</table>
+
+<!-- 井の頭線 -->
+<h2>井の頭線</h2>
+<div class="tab-buttons" id="filterInok">
+  <button data-filter="all" class="active">全て</button>
+  <button data-filter="上り">上り</button>
+  <button data-filter="下り">下り</button>
+</div>
+<table id="inokTable">
+  <tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>
+</table>
+
+<!-- 通知欄 -->
+<div id="notification">
+  <h3>🚨 運行通知</h3>
+  <ul id="notifyList"><li>読み込み中...</li></ul>
+</div>
+
+<script>
+const idMap = {
+  1:"京王線新宿",2:"笹塚",3:"代田橋",4:"明大前",5:"下高井戸",6:"桜上水",7:"上北沢",8:"八幡山",9:"芦花公園",10:"千歳烏山",11:"仙川",
+  12:"つつじヶ丘",13:"柴崎",14:"国領",15:"布田",16:"調布",17:"西調布",18:"飛田給",19:"武蔵野台",20:"多磨霊園",21:"東府中",22:"府中",
+  23:"分倍河原",24:"中河原",25:"聖蹟桜ヶ丘",26:"百草園",27:"高幡不動",28:"南平",29:"平山城址公園",30:"長沼",31:"北野",32:"京王八王子",
+  44:"京王多摩川",45:"京王稲田堤",46:"京王よみうりランド",47:"稲城",48:"若葉台",49:"京王永山",50:"京王多摩センター",51:"京王堀之内",
+  52:"南大沢",53:"多摩境",54:"橋本",81:"渋谷",82:"神泉",83:"駒場東大前",84:"池ノ上",85:"下北沢",86:"新代田",87:"東松原",88:"明大前",
+  89:"永福町",90:"西永福",91:"浜田山",92:"高井戸",93:"富士見ヶ丘",94:"久我山",95:"三鷹台",96:"井の頭公園",97:"吉祥寺"
+};
+
+const syMap = {
+  1:{name:"特急", class:"tokkyu"},2:{name:"急行", class:"kyuko"},3:{name:"快速", class:"kaisoku"},
+  5:{name:"区間急行", class:"kukan"},6:{name:"各停", class:"kakutei"},9:{name:"ライナー", class:"tokkyu"},11:{name:"ライナー", class:"tokkyu"}
+};
+
+function updateLocalTime(){
+  const now=new Date();
+  document.getElementById("localTime").textContent=
+    `現在時刻: ${now.toLocaleTimeString("ja-JP",{hour12:false})}`;
+}
+
+function getPositionLabel(id){
+  const n=parseInt(id.slice(1));
+  if(id.startsWith("E")) return `${idMap[n]}駅構内`;
+  if(id.startsWith("U")) return `${idMap[n+1]}〜${idMap[n]}間 上り`;
+  if(id.startsWith("D")) return `${idMap[n]}〜${idMap[n-1]}間 下り`;
+  return "不明";
+}
+
+async function fetchData(){
+  try{
+    const res=await fetch("https://i.opentidkeio.jp/data/traffic_info.json?cache="+Date.now());
+    const data=await res.json();
+
+    const t=data.up?.[0]?.dt?.[0];
+    if(t) document.getElementById("updateTime").textContent=
+      `データ最終更新: ${t.yy}/${t.mt}/${t.dy} ${String(t.hh%24).padStart(2,"0")}:${t.mm}:${t.ss}`;
+
+    const keioTable=document.getElementById("keioTable");
+    const inokTable=document.getElementById("inokTable");
+    keioTable.innerHTML=`<tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>`;
+    inokTable.innerHTML=`<tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>`;
+
+    const allTrains=[];
+    function addRows(section,table){
+      section.forEach(st=>{
+        st.ps.forEach(p=>{
+          const id=st.id;
+          const updown=parseInt(id.slice(1))%2===0?"上り":"下り";
+          const sy=syMap[p.sy]||{name:"不明",class:""};
+          const ik=idMap[p.ik_tr.padStart(3,"0")]||"不明";
+          const pos=getPositionLabel(id);
+          const delay=p.dl==="00"?"平常":p.dl+"分遅れ";
+
+          allTrains.push({
+            tr:p.tr.trim(),sy:sy.name,syClass:sy.class,updown,ik,sr:p.sr,bs:p.bs,delay:p.dl,
+            pos,id,remarks:""
+          });
+        });
+      });
+    }
+
+    if(data.TS) addRows(data.TS,keioTable);
+    if(data.TB) addRows(data.TB,inokTable);
+
+    // 備考生成
+    const trCount={};
+    allTrains.forEach(t=>trCount[t.tr]=(trCount[t.tr]||0)+1);
+    allTrains.forEach(t=>{
+      if(t.sy==="特急"&&t.sr==="8") t.remarks="特急（8両編成）";
+      if(trCount[t.tr]>1) t.remarks+=(t.remarks?"／":"")+"車両交換予定";
+    });
+
+    // 表描画
+    function render(table,filter,line){
+      table.innerHTML=`<tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>`;
+      allTrains
+        .filter(t=>line==="keio"?(parseInt(t.id.slice(1))<=54):(parseInt(t.id.slice(1))>=81))
+        .filter(t=>filter==="all"||t.updown===filter)
+        .forEach(t=>{
+          const delayLabel=t.delay==="00"?"平常":`${t.delay}分遅れ`;
+          const row=`<tr>
+            <td>${t.updown}</td>
+            <td>${t.tr}</td>
+            <td>${t.ik}</td>
+            <td class="${t.syClass}">${t.sy}</td>
+            <td>${t.sr}</td>
+            <td>${t.pos}</td>
+            <td>${t.bs}</td>
+            <td>${delayLabel}</td>
+            <td data-remarks="${t.remarks}">${t.remarks}</td>
+          </tr>`;
+          table.insertAdjacentHTML("beforeend",row);
+        });
+    }
+
+    // 通知欄
+    const notifyList=document.getElementById("notifyList");
+    const notifications=[];
+    allTrains.forEach(t=>{
+      if(parseInt(t.delay)>=15)
+        notifications.push(`${t.tr}（${t.delay}分遅れ）`);
+      if(t.remarks.includes("車両交換予定"))
+        notifications.push(`${t.tr}（車両交換予定）`);
+    });
+    notifyList.innerHTML=notifications.length?
+      notifications.map(n=>`<li>${n}</li>`).join(""):
+      "<li>平常運転</li>";
+
+    localStorage.setItem("notifications",JSON.stringify({
+      expires:new Date(new Date().setHours(25,15,0,0)).getTime(),
+      list:notifications
+    }));
+
+    render(keioTable,"all","keio");
+    render(inokTable,"all","inok");
+
+    // タブ切替
+    function setupTabs(id,table,line){
+      document.querySelectorAll(`#${id} button`).forEach(btn=>{
+        btn.onclick=()=>{
+          document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.remove("active"));
+          btn.classList.add("active");
+          render(table,btn.dataset.filter,line);
+        };
+      });
+    }
+    setupTabs("filterKeio",keioTable,"keio");
+    setupTabs("filterInok",inokTable,"inok");
+
+  }catch(e){
+    document.getElementById("updateTime").textContent="更新失敗："+e.message;
+  }
+}
+
+// 初回実行・自動更新
+fetchData();
+setInterval(fetchData,30000);
+setInterval(updateLocalTime,1000);
+updateLocalTime();
+
+// 過去通知復元
+window.addEventListener("load",()=>{
+  const saved=JSON.parse(localStorage.getItem("notifications")||"{}");
+  if(saved.expires>Date.now()){
+    const list=document.getElementById("notifyList");
+    list.innerHTML=saved.list.length?
+      saved.list.map(n=>`<li>${n}</li>`).join(""):
+      "<li>平常運転</li>";
+  }
+});
+</script>
+</body>
+</html>
