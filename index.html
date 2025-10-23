@@ -384,18 +384,7 @@ async function fetchAndRender(){
       inokUp: document.querySelector("#inok-up tbody"),
       inokDown: document.querySelector("#inok-down tbody")
     };
-    Object.values(bodies).forEach(tb => { if(tb) tb.innerHTML = ""; });
-
-    // 全列車を横断して車両交換判定のためにカウント（TS+TB）
-    const trainCount = {};
-    function countAll(section){
-      if(!section) return;
-      section.forEach(st => (st.ps || []).forEach(p => {
-        const tr = (p.tr || "").trim();
-        if(tr) trainCount[tr] = (trainCount[tr] || 0) + 1;
-      }));
-    }
-    countAll(data.TS); countAll(data.TB);
+    Object.values(bodies).forEach(tb => { if(tb) tb.innerHTML =
 
     // 通知用セット
     const delaySet = new Set();
