@@ -2,10 +2,10 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>京王線・井の頭線 在線状況（自動更新 30秒）</title>
+<title>京王線・井の頭線 在線状況（30秒自動更新）</title>
 <style>
   body { font-family: "Segoe UI", sans-serif; text-align: center; background: #f8f8f8; margin-bottom: 50px; }
-  h2 { margin-top: 30px; }
+  h1, h2 { margin-top: 30px; }
   table { border-collapse: collapse; margin: 20px auto; width: 90%; max-width: 1000px; background: #fff; }
   th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: center; }
   th { background: #eee; }
@@ -14,11 +14,13 @@
   .kaisoku { color: #fff; background: #1976d2; }     /* 快速 → 青 */
   .kukan { color: #000; background: #fff176; }       /* 区間急行 → 黄色 */
   .kakutei { color: #000; background: #e0e0e0; }     /* 各停 → 灰色 */
+  #updateTime, #localTime { margin: 5px 0; font-size: 14px; color: #555; }
 </style>
 </head>
 <body>
 <h1>京王線・井の頭線 在線状況</h1>
-<p id="updateTime">更新中...</p>
+<p id="updateTime">データ更新中...</p>
+<p id="localTime">現在時刻: --:--:--</p>
 
 <h2>🚆 京王線・相模原線</h2>
 <table id="keioTable">
@@ -38,7 +40,9 @@ const idMap = {
   026:"百草園",027:"高幡不動",028:"南平",029:"平山城址公園",030:"長沼",031:"北野",032:"京王八王子",
   044:"京王多摩川",045:"京王稲田堤",046:"京王よみうりランド",047:"稲城",048:"若葉台",049:"京王永山",
   050:"京王多摩センター",051:"京王堀之内",052:"南大沢",053:"多摩境",054:"橋本",
-  093:"富士見ヶ丘",097:"吉祥寺"
+  081:"渋谷",082:"神泉",083:"駒場東大前",084:"池ノ上",085:"下北沢",086:"新代田",087:"東松原",
+  088:"明大前",089:"永福町",090:"西永福",091:"浜田山",092:"高井戸",093:"富士見ヶ丘",094:"久我山",
+  095:"三鷹台",096:"井の頭公園",097:"吉祥寺"
 };
 
 const syMap = {
@@ -51,16 +55,26 @@ const syMap = {
   11:{name:"ライナー", class:"tokkyu"}
 };
 
+function updateLocalTime() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,"0");
+  const m = String(now.getMinutes()).padStart(2,"0");
+  const s = String(now.getSeconds()).padStart(2,"0");
+  document.getElementById("localTime").textContent = `現在時刻: ${h}:${m}:${s}`;
+}
+
 async function fetchData() {
   try {
     const res = await fetch("https://i.opentidkeio.jp/data/traffic_info.json?cache=" + Date.now());
     const data = await res.json();
 
     // --- 更新時刻 ---
-    const t = data.up[0].dt[0];
-    const hh = String((parseInt(t.hh) % 24)).padStart(2,"0");
-    const timeText = `${t.yy}/${t.mt}/${t.dy} ${hh}:${t.mm}:${t.ss}`;
-    document.getElementById("updateTime").textContent = `最終更新：${timeText}`;
+    const t = data.up?.[0]?.dt?.[0];
+    if (t) {
+      const hh = String(parseInt(t.hh) % 24).padStart(2,"0");
+      document.getElementById("updateTime").textContent =
+        `データ最終更新: ${t.yy}/${t.mt}/${t.dy} ${hh}:${t.mm}:${t.ss}`;
+    }
 
     // テーブル初期化
     const keioTable = document.getElementById("keioTable");
@@ -75,20 +89,21 @@ async function fetchData() {
           const trNo = p.tr.trim();
           const sy = syMap[p.sy] || {name:"不明", class:""};
           const ik = idMap[p.ik_tr.padStart(3,"0")] || "不明";
-          const pos = (id.startsWith("E") ? idMap[id.slice(1)] + "駅構内" :
-                       id.startsWith("U") ? idMap[(+id.slice(1)+1).toString().padStart(3,"0")] + "〜" + idMap[id.slice(1)] + "間 上り" :
-                       id.startsWith("D") ? idMap[id.slice(1)] + "〜" + idMap[(+id.slice(1)-1).toString().padStart(3,"0")] + "間 下り" :
-                       "不明");
+          const pos =
+            id.startsWith("E") ? idMap[id.slice(1)] + "駅構内" :
+            id.startsWith("U") ? idMap[(+id.slice(1)+1).toString().padStart(3,"0")] + "〜" + idMap[id.slice(1)] + "間 上り" :
+            id.startsWith("D") ? idMap[id.slice(1)] + "〜" + idMap[(+id.slice(1)-1).toString().padStart(3,"0")] + "間 下り" :
+            "不明";
           const updown = parseInt(id.slice(1)) % 2 === 0 ? "上り" : "下り";
-          const delay = p.dl === "00" ? "平常" : p.dl + "分";
+          const delay = p.dl === "00" ? "平常" : p.dl + "分遅れ";
           const row = `<tr><td>${trNo}</td><td class="${sy.class}">${sy.name}</td><td>${updown}</td><td>${pos}</td><td>${ik}</td><td>${p.sr}</td><td>${p.bs}</td><td>${delay}</td></tr>`;
           table.insertAdjacentHTML("beforeend", row);
         });
       });
     }
 
-    addRows(data.TS, keioTable);  // 京王線
-    addRows(data.TB, inokTable);  // 井の頭線
+    if (data.TS) addRows(data.TS, keioTable);  // 京王線・相模原線
+    if (data.TB) addRows(data.TB, inokTable);  // 井の頭線
   } catch (e) {
     document.getElementById("updateTime").textContent = "更新失敗：" + e.message;
   }
@@ -97,6 +112,8 @@ async function fetchData() {
 // 初回実行 & 30秒ごと自動更新
 fetchData();
 setInterval(fetchData, 30000);
+setInterval(updateLocalTime, 1000);
+updateLocalTime();
 </script>
 </body>
 </html>
