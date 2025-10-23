@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja" data-version="v0.1.3">
+<html lang="ja" data-version="v0.1.31">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — v0.1.3</title>
+<title>運行中列車 — v0.1.31</title>
 <style>
 /* 基本スタイル（GitHub風・レスポンシブ） */
 :root{
@@ -319,6 +319,17 @@ function bindSortable(table){
       rows.sort((a,b)=>{
         const A = a.cells[idx].innerText.trim();
         const B = b.cells[idx].innerText.trim();
+
+        // ★ 改修箇所: 現在位置列のソートを駅コード順にする
+        const headerKey = th.getAttribute("data-key");
+        if (headerKey === "pos") {
+          // E016, D022 などから数値部分を抽出
+          const numA = parseInt(A.match(/\d+/)?.[0] || "9999", 10);
+          const numB = parseInt(B.match(/\d+/)?.[0] || "9999", 10);
+          return asc ? numA - numB : numB - numA;
+        }
+
+        // 通常の数値／文字列ソート
         const nA = parseFloat(A.replace(/[^\d.-]/g,""));
         const nB = parseFloat(B.replace(/[^\d.-]/g,""));
         if(!isNaN(nA) && !isNaN(nB)) return asc ? nA - nB : nB - nA;
