@@ -281,7 +281,7 @@ async function fetchData(){
           allTrains.push(p.tr);
 
           const delayMin = parseInt(p.dl);
-          if(delayMin>=15) alerts.push(`🚨 ${p.tr}号列車 ${delayMin}分遅れ`);
+          if(delayMin>=15) alerts.push(` ${p.tr}列車 ${delayMin}分遅れ`);
 
           const pos = idMap[p.id?.slice(1)] || "位置不明";
 
@@ -297,7 +297,7 @@ async function fetchData(){
     // 車両交換予定チェック
     const dup = allTrains.filter((v,i,a)=>a.indexOf(v)!==i);
     dup.forEach(d=>{
-      alerts.push(`🔁 ${d}号列車 車両交換予定`);
+      alerts.push(` ${d}列車 車両交換予定`);
     });
 
     document.getElementById("alertContent").innerHTML = alerts.length? alerts.join("<br>"):"現在、特記事項はありません。";
