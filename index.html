@@ -1,481 +1,232 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8">
 <title>京王線・井の頭線 在線状況</title>
 <style>
-  :root{
-    --tokkyu:#d32f2f; /* 赤 */
-    --kyuko:#388e3c;  /* 緑 */
-    --kaisoku:#1976d2;/* 青 */
-    --kukan:#fff176;  /* 黄 */
-    --kakutei:#e0e0e0;/* 灰 */
-    --accent:#1976d2;
+  body { font-family: "Segoe UI", sans-serif; text-align: center; background: #f8f8f8; margin-bottom: 120px; }
+  h1, h2 { margin-top: 30px; }
+  table { border-collapse: collapse; margin: 10px auto; width: 95%; max-width: 1000px; background: #fff; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: center; }
+  th { background: #eee; cursor: pointer; }
+  tr:hover { background: #fafafa; }
+
+  /* 種別カラー */
+  .tokkyu { color: #fff; background: #d32f2f; }
+  .kyuko { color: #fff; background: #388e3c; }
+  .kaisoku { color: #fff; background: #1976d2; }
+  .kukan { color: #000; background: #fff176; }
+  .kakutei { color: #000; background: #e0e0e0; }
+
+  /* タブ切替デザイン */
+  .tab-buttons {
+    display: flex; justify-content: center; border-bottom: 2px solid #ccc; margin: 10px auto; width: 95%; max-width: 1000px;
   }
-  body{font-family:Segoe UI,system-ui,-apple-system,"Helvetica Neue",Arial;margin:0;background:#f7f8fa;color:#222}
-  header{padding:18px 12px;text-align:center}
-  h1{margin:0;font-size:20px}
-  #meta{display:flex;gap:12px;justify-content:center;align-items:center;margin-top:8px}
-  #updateTime,#localTime{color:#555;font-size:13px}
-  main{padding:10px 8px 140px}
-  h2{margin:18px 0 8px;font-size:16px}
-  .tab-buttons{display:flex;justify-content:center;border-bottom:2px solid #e3e6ea;margin:0 auto 10px;max-width:1000px}
-  .tab-buttons button{flex:1;border:0;background:none;padding:10px 8px;font-size:15px;cursor:pointer;border-bottom:3px solid transparent;transition:.15s}
-  .tab-buttons button:hover{background:#f3f5f7}
-  .tab-buttons button.active{border-bottom:3px solid var(--accent);color:var(--accent);font-weight:600}
-  table{width:95%;max-width:1000px;margin:10px auto 24px;border-collapse:collapse;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
-  th,td{padding:8px 10px;border:1px solid #e6e9ec;text-align:center;font-size:14px}
-  th{background:#fbfdff;position:sticky;top:0}
-  tr:hover td{background:#fbfbfb}
-  .tokkyu{color:#fff;background:var(--tokkyu)}
-  .kyuko{color:#fff;background:var(--kyuko)}
-  .kaisoku{color:#fff;background:var(--kaisoku)}
-  .kukan{color:#000;background:var(--kukan)}
-  .kakutei{color:#000;background:var(--kakutei)}
-  /* notification bottom */
-  #notification{position:fixed;left:8px;right:8px;bottom:8px;background:#fff3f3;border:1px solid #f2c0c0;padding:10px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.06);max-height:160px;overflow:auto}
-  #notification h3{margin:0 0 8px;color:#b71c1c;text-align:center}
-  #notification ul{margin:0;padding:0;list-style:none}
-  #notification li{padding:4px 6px;border-radius:4px;margin-bottom:4px}
-  .notif-delay{background:#ffdfe0;color:#900} /* 遅延 */
-  .notif-exchange{background:#fff6d6;color:#8a5b00} /* 交換 */
-  /* settings */
-  #controls{position:fixed;top:12px;right:12px}
-  .btn{background:var(--accent);color:#fff;padding:8px 10px;border-radius:6px;border:0;cursor:pointer;font-size:13px}
-  .btn.ghost{background:#fff;border:1px solid #cfd8e3;color:#333}
-  /* lock screen */
-  #lockScreen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(240,240,240,0.95);z-index:9999}
-  .lockBox{background:#fff;padding:22px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,0.12);width:min(420px,92%);text-align:center}
-  .lockBox input{width:100%;padding:10px;margin-top:8px;border-radius:6px;border:1px solid #ddd;font-size:15px}
-  .lockBox .small{font-size:13px;color:#666;margin-top:8px}
-  /* modal settings */
-  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);z-index:9999}
-  .modal .card{background:#fff;padding:16px;border-radius:8px;max-width:420px;width:92%}
-  .form-row{margin:8px 0}
-  input[type="password"]{width:100%;padding:8px;border:1px solid #ddd;border-radius:6px}
-  .footer-note{font-size:12px;color:#666;text-align:center;margin-top:8px}
-  @media (max-width:520px){
-    th,td{font-size:12px;padding:6px}
-    .tab-buttons button{font-size:14px;padding:9px}
-    #notification{left:6px;right:6px;bottom:6px}
+  .tab-buttons button {
+    flex: 1; border: none; background: none; padding: 10px; font-size: 16px; cursor: pointer;
+    border-bottom: 3px solid transparent; transition: all 0.2s ease;
   }
+  .tab-buttons button:hover { background: #f3f3f3; }
+  .tab-buttons button.active { border-bottom: 3px solid #1976d2; color: #1976d2; font-weight: bold; }
+
+  /* 通知欄 */
+  #notification {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #fff3cd; color: #000; border-top: 2px solid #f0ad4e;
+    padding: 10px; font-size: 15px; text-align: left;
+    max-height: 120px; overflow-y: auto;
+  }
+  #notification h3 { margin: 0 0 5px; font-size: 16px; color: #d9534f; text-align: center; }
+  #notification ul { list-style: none; padding: 0; margin: 0; }
+  #notification li { padding: 3px 0; }
+
+  #updateTime, #localTime { margin: 5px 0; font-size: 14px; color: #555; }
 </style>
 </head>
 <body>
-<header>
-  <h1>京王線・井の頭線 在来在線状況</h1>
-  <div id="meta">
-    <div id="updateTime">データ更新中...</div>
-    <div id="localTime">現在時刻: --:--:--</div>
-  </div>
-</header>
+<h1>京王線・井の頭線 在線状況</h1>
+<p id="updateTime">データ更新中...</p>
+<p id="localTime">現在時刻: --:--:--</p>
 
-<!-- controls -->
-<div id="controls">
-  <button class="btn ghost" id="btnLogout" style="display:none">ログアウト</button>
-  <button class="btn" id="btnSettings" style="display:none">設定</button>
+<!-- 京王線 -->
+<h2>京王線・相模原線</h2>
+<div class="tab-buttons" id="filterKeio">
+  <button data-filter="all" class="active">全て</button>
+  <button data-filter="上り">上り</button>
+  <button data-filter="下り">下り</button>
 </div>
+<table id="keioTable">
+  <tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>
+</table>
 
-<main id="content" style="display:none">
-  <section>
-    <h2>京王線・相模原線</h2>
-    <div class="tab-buttons" id="filterKeio">
-      <button data-filter="all" class="active">全て</button>
-      <button data-filter="上り">上り</button>
-      <button data-filter="下り">下り</button>
-    </div>
-    <table id="keioTable"><thead><tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr></thead><tbody></tbody></table>
-  </section>
+<!-- 井の頭線 -->
+<h2>井の頭線</h2>
+<div class="tab-buttons" id="filterInok">
+  <button data-filter="all" class="active">全て</button>
+  <button data-filter="上り">上り</button>
+  <button data-filter="下り">下り</button>
+</div>
+<table id="inokTable">
+  <tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>
+</table>
 
-  <section>
-    <h2>井の頭線</h2>
-    <div class="tab-buttons" id="filterInok">
-      <button data-filter="all" class="active">全て</button>
-      <button data-filter="上り">上り</button>
-      <button data-filter="下り">下り</button>
-    </div>
-    <table id="inokTable"><thead><tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr></thead><tbody></tbody></table>
-  </section>
-</main>
-
-<!-- notification bottom -->
-<div id="notification" aria-live="polite">
+<!-- 通知欄 -->
+<div id="notification">
   <h3>🚨 運行通知</h3>
   <ul id="notifyList"><li>読み込み中...</li></ul>
 </div>
 
-<!-- lock screen -->
-<div id="lockScreen">
-  <div class="lockBox">
-    <h3>アクセス認証</h3>
-    <p>パスワードを入力してください</p>
-    <input id="passInput" type="password" placeholder="パスワード">
-    <div style="display:flex;gap:8px;margin-top:10px;justify-content:center">
-      <button class="btn" id="unlockBtn">認証</button>
-      <button class="btn ghost" id="helpBtn">初期値</button>
-    </div>
-    <div class="small" id="lockMsg"></div>
-  </div>
-</div>
-
-<!-- settings modal -->
-<div class="modal" id="modalSettings">
-  <div class="card">
-    <h3>設定</h3>
-    <div class="form-row">
-      <label>現在のパスワード</label>
-      <input id="curPass" type="password" placeholder="現在のパスワード">
-    </div>
-    <div class="form-row">
-      <label>新しいパスワード</label>
-      <input id="newPass" type="password" placeholder="新しいパスワード">
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
-      <button class="btn ghost" id="closeSettings">閉じる</button>
-      <button class="btn" id="savePass">変更を保存</button>
-    </div>
-    <div class="footer-note">パスワードはブラウザの localStorage に保存されます。</div>
-  </div>
-</div>
-
 <script>
-/* ---------- 設定キーと初期値 ---------- */
-const KEY_PASS = "keio_pass";
-const KEY_ACCESS = "keio_access";
-const KEY_NOTIF = "keio_notifications";
-const DEFAULT_PASS = "0000";
+const idMap = {
+  1:"京王線新宿",2:"笹塚",3:"代田橋",4:"明大前",5:"下高井戸",6:"桜上水",7:"上北沢",8:"八幡山",9:"芦花公園",10:"千歳烏山",11:"仙川",
+  12:"つつじヶ丘",13:"柴崎",14:"国領",15:"布田",16:"調布",17:"西調布",18:"飛田給",19:"武蔵野台",20:"多磨霊園",21:"東府中",22:"府中",
+  23:"分倍河原",24:"中河原",25:"聖蹟桜ヶ丘",26:"百草園",27:"高幡不動",28:"南平",29:"平山城址公園",30:"長沼",31:"北野",32:"京王八王子",
+  44:"京王多摩川",45:"京王稲田堤",46:"京王よみうりランド",47:"稲城",48:"若葉台",49:"京王永山",50:"京王多摩センター",51:"京王堀之内",
+  52:"南大沢",53:"多摩境",54:"橋本",81:"渋谷",82:"神泉",83:"駒場東大前",84:"池ノ上",85:"下北沢",86:"新代田",87:"東松原",88:"明大前",
+  89:"永福町",90:"西永福",91:"浜田山",92:"高井戸",93:"富士見ヶ丘",94:"久我山",95:"三鷹台",96:"井の頭公園",97:"吉祥寺"
+};
 
-/* ---------- ユーティリティ ---------- */
-function nowTime(){ return new Date().toLocaleTimeString("ja-JP",{hour12:false}); }
-function getStoredPass(){ return localStorage.getItem(KEY_PASS) || DEFAULT_PASS; }
-function setStoredPass(v){ localStorage.setItem(KEY_PASS, v); }
+const syMap = {
+  1:{name:"特急", class:"tokkyu"},2:{name:"急行", class:"kyuko"},3:{name:"快速", class:"kaisoku"},
+  5:{name:"区間急行", class:"kukan"},6:{name:"各停", class:"kakutei"},9:{name:"ライナー", class:"tokkyu"},11:{name:"ライナー", class:"tokkyu"}
+};
 
-/* ---------- DOM refs ---------- */
-const lockScreen = document.getElementById("lockScreen");
-const content = document.getElementById("content");
-const unlockBtn = document.getElementById("unlockBtn");
-const passInput = document.getElementById("passInput");
-const lockMsg = document.getElementById("lockMsg");
-const helpBtn = document.getElementById("helpBtn");
-const btnLogout = document.getElementById("btnLogout");
-const btnSettings = document.getElementById("btnSettings");
-const modalSettings = document.getElementById("modalSettings");
-const closeSettings = document.getElementById("closeSettings");
-const savePass = document.getElementById("savePass");
-const curPass = document.getElementById("curPass");
-const newPass = document.getElementById("newPass");
-
-/* ---------- 起動時：表示・認証管理 ---------- */
-function showLocked(){ lockScreen.style.display="flex"; content.style.display="none"; btnLogout.style.display="none"; btnSettings.style.display="none"; }
-function showUnlocked(){ lockScreen.style.display="none"; content.style.display="block"; btnLogout.style.display="inline-block"; btnSettings.style.display="inline-block"; }
-
-function checkAccess(){ return localStorage.getItem(KEY_ACCESS) === "granted"; }
-
-/* 自動的にアクセスが許可されている場合 */
-if(checkAccess()){
-  showUnlocked();
-} else {
-  showLocked();
+function updateLocalTime(){
+  const now=new Date();
+  document.getElementById("localTime").textContent=
+    `現在時刻: ${now.toLocaleTimeString("ja-JP",{hour12:false})}`;
 }
 
-/* 初期値表示（ヘルプボタンで案内） */
-helpBtn.addEventListener("click", ()=>{ lockMsg.textContent = `初期パスワードは「${DEFAULT_PASS}」です`; setTimeout(()=>lockMsg.textContent="",4000); });
-
-unlockBtn.addEventListener("click", ()=>{
-  const v = passInput.value || "";
-  if(v === getStoredPass()){
-    localStorage.setItem(KEY_ACCESS,"granted");
-    passInput.value="";
-    showUnlocked();
-  } else {
-    lockMsg.textContent = "パスワードが違います";
-    setTimeout(()=>lockMsg.textContent="",2500);
-  }
-});
-
-/* ログアウト */
-btnLogout.addEventListener("click", ()=>{
-  localStorage.removeItem(KEY_ACCESS);
-  showLocked();
-});
-
-/* 設定モーダル */
-btnSettings.addEventListener("click", ()=>{ modalSettings.style.display="flex"; });
-closeSettings.addEventListener("click", ()=>{ modalSettings.style.display="none"; curPass.value=""; newPass.value=""; });
-
-savePass.addEventListener("click", ()=>{
-  const cur = curPass.value||"";
-  const nw = newPass.value||"";
-  if(cur !== getStoredPass()){ alert("現在のパスワードが違います"); return; }
-  if(nw.length < 1){ alert("新しいパスワードを入力してください"); return; }
-  setStoredPass(nw);
-  modalSettings.style.display="none";
-  curPass.value=""; newPass.value="";
-  alert("パスワードを変更しました");
-});
-
-/* ---------- データ表示ロジック（fetch・描画・通知） ---------- */
-/* idMap / syMap の定義（短縮済み） */
-const idMap = {1:"京王線新宿",2:"笹塚",3:"代田橋",4:"明大前",5:"下高井戸",6:"桜上水",7:"上北沢",8:"八幡山",9:"芦花公園",10:"千歳烏山",11:"仙川",12:"つつじヶ丘",13:"柴崎",14:"国領",15:"布田",16:"調布",17:"西調布",18:"飛田給",19:"武蔵野台",20:"多磨霊園",21:"東府中",22:"府中",23:"分倍河原",24:"中河原",25:"聖蹟桜ヶ丘",26:"百草園",27:"高幡不動",28:"南平",29:"平山城址公園",30:"長沼",31:"北野",32:"京王八王子",44:"京王多摩川",45:"京王稲田堤",46:"京王よみうりランド",47:"稲城",48:"若葉台",49:"京王永山",50:"京王多摩センター",51:"京王堀之内",52:"南大沢",53:"多摩境",54:"橋本",81:"渋谷",82:"神泉",83:"駒場東大前",84:"池ノ上",85:"下北沢",86:"新代田",87:"東松原",88:"明大前",89:"永福町",90:"西永福",91:"浜田山",92:"高井戸",93:"富士見ヶ丘",94:"久我山",95:"三鷹台",96:"井の頭公園",97:"吉祥寺"};
-const syMap = {1:{name:"特急",class:"tokkyu"},2:{name:"急行",class:"kyuko"},3:{name:"快速",class:"kaisoku"},5:{name:"区間急行",class:"kukan"},6:{name:"各停",class:"kakutei"},9:{name:"ライナー",class:"tokkyu"},11:{name:"ライナー",class:"tokkyu"}};
-
-const updateTimeEl = document.getElementById("updateTime");
-const localTimeEl = document.getElementById("localTime");
-const keioTableBody = document.querySelector("#keioTable tbody");
-const inokTableBody = document.querySelector("#inokTable tbody");
-const notifyList = document.getElementById("notifyList");
-
-/* helper */
-function getPosLabel(id){
-  const n = parseInt(id.slice(1));
+function getPositionLabel(id){
+  const n=parseInt(id.slice(1));
   if(id.startsWith("E")) return `${idMap[n]}駅構内`;
-  if(id.startsWith("U")) return `${idMap[n+1]||"不明"}〜${idMap[n]||"不明"}間 上り`;
-  if(id.startsWith("D")) return `${idMap[n]||"不明"}〜${idMap[n-1]||"不明"}間 下り`;
+  if(id.startsWith("U")) return `${idMap[n+1]}〜${idMap[n]}間 上り`;
+  if(id.startsWith("D")) return `${idMap[n]}〜${idMap[n-1]}間 下り`;
   return "不明";
 }
-function parseDelay(dl){ const v = parseInt(dl); return isNaN(v)?0:v; }
 
-/* 通知保存/復元 */
-function notifExpiryTimestamp(){
-  // 翌日 1:15 のタイムスタンプ（ローカル時間）
-  const now = new Date();
-  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 1, 15, 0, 0);
-  return tomorrow.getTime();
-}
-function loadNotifications(){
-  const raw = localStorage.getItem(KEY_NOTIF);
-  if(!raw) return {expires:0,list:[]};
-  try{ const obj = JSON.parse(raw); if(obj.expires && obj.expires > Date.now()) return obj; }catch(e){}
-  return {expires:0,list:[]};
-}
-function saveNotifications(obj){ localStorage.setItem(KEY_NOTIF, JSON.stringify(obj)); }
-
-/* render notifications into bottom box */
-function renderNotifications(obj){
-  notifyList.innerHTML = "";
-  if(!obj.list || obj.list.length===0){ notifyList.innerHTML="<li>平常運転</li>"; return; }
-  obj.list.forEach(item=>{
-    const li = document.createElement("li");
-    li.textContent = item.text + (item.time?` [記録 ${item.time}]`:"");
-    li.className = item.type==="delay" ? "notif-delay" : "notif-exchange";
-    notifyList.appendChild(li);
-  });
-}
-
-/* main fetch & render */
-async function fetchAndRender(){
+async function fetchData(){
   try{
-    const url = "https://i.opentidkeio.jp/data/traffic_info.json?cache="+Date.now();
-    const res = await fetch(url);
-    const data = await res.json();
+    const res=await fetch("https://i.opentidkeio.jp/data/traffic_info.json?cache="+Date.now());
+    const data=await res.json();
 
-    // update times
-    const t = data.up?.[0]?.dt?.[0];
-    if(t){
-      const hh = String(parseInt(t.hh) % 24).padStart(2,"0");
-      updateTimeEl.textContent = `データ最終更新: ${t.yy}/${t.mt}/${t.dy} ${hh}:${t.mm}:${t.ss}`;
-    }
+    const t=data.up?.[0]?.dt?.[0];
+    if(t) document.getElementById("updateTime").textContent=
+      `データ最終更新: ${t.yy}/${t.mt}/${t.dy} ${String(t.hh%24).padStart(2,"0")}:${t.mm}:${t.ss}`;
 
-    // collect trains
-    const all = [];
-    function collect(section, source){
+    const keioTable=document.getElementById("keioTable");
+    const inokTable=document.getElementById("inokTable");
+    keioTable.innerHTML=`<tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>`;
+    inokTable.innerHTML=`<tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>`;
+
+    const allTrains=[];
+    function addRows(section,table){
       section.forEach(st=>{
         st.ps.forEach(p=>{
-          const id = st.id;
-          const tr = (p.tr||"").trim();
-          const sy = syMap[p.sy] ? syMap[p.sy].name : "不明";
-          const syClass = syMap[p.sy] ? syMap[p.sy].class : "";
-          const ik = idMap[(p.ik_tr||"").padStart(3,"0")] || "不明";
-          const pos = getPosLabel(id);
-          const updown = (parseInt(id.slice(1))%2===0) ? "上り" : "下り";
-          const delayNum = parseDelay(p.dl);
-          all.push({id,source,tr,sy,syClass,ik,pos,updown,sr:p.sr||"",bs:p.bs||"",delayNum,delayLabel: p.dl==="00" ? "平常" : (p.dl+"分遅れ"),remarks:""});
+          const id=st.id;
+          const updown=parseInt(id.slice(1))%2===0?"上り":"下り";
+          const sy=syMap[p.sy]||{name:"不明",class:""};
+          const ik=idMap[p.ik_tr.padStart(3,"0")]||"不明";
+          const pos=getPositionLabel(id);
+          const delay=p.dl==="00"?"平常":p.dl+"分遅れ";
+
+          allTrains.push({
+            tr:p.tr.trim(),sy:sy.name,syClass:sy.class,updown,ik,sr:p.sr,bs:p.bs,delay:p.dl,
+            pos,id,remarks:""
+          });
         });
       });
     }
-    if(data.TS) collect(data.TS,"keio");
-    if(data.TB) collect(data.TB,"inok");
 
-    // remarks: special rules
-    const count = {};
-    all.forEach(x=>{ count[x.tr] = (count[x.tr]||0)+1; });
-    all.forEach(x=>{
-      if(x.sy==="特急" && x.sr==="8") x.remarks = "特急（8両編成）";
-      if(count[x.tr] > 1) x.remarks += (x.remarks ? "／":"") + "車両交換予定";
+    if(data.TS) addRows(data.TS,keioTable);
+    if(data.TB) addRows(data.TB,inokTable);
+
+    // 備考生成
+    const trCount={};
+    allTrains.forEach(t=>trCount[t.tr]=(trCount[t.tr]||0)+1);
+    allTrains.forEach(t=>{
+      if(t.sy==="特急"&&t.sr==="8") t.remarks="特急（8両編成）";
+      if(trCount[t.tr]>1) t.remarks+=(t.remarks?"／":"")+"車両交換予定";
     });
 
-    // notifications: load old, append new unique items, set expiry
-    const stored = loadNotifications();
-    // start with stored list (if still valid)
-    let notifObj = stored.expires > Date.now() ? stored : {expires: notifExpiryTimestamp(), list: []};
-    // helper to push if not exist
-    function pushNotif(type, text){
-      if(!notifObj.list.find(i => i.text === text)){
-        notifObj.list.push({type,text,time: nowTime()});
-      }
-    }
-    // check all trains: delay >=15 and exchange
-    all.forEach(x=>{
-      if(x.delayNum >= 15) pushNotif("delay", `${x.tr}（${x.delayNum}分遅れ）`);
-      if(x.remarks.includes("車両交換予定")) pushNotif("exchange", `${x.tr}（車両交換予定）`);
-    });
-    // save
-    notifObj.expires = notifExpiryTimestamp();
-    saveNotifications(notifObj);
-    renderNotifications(notifObj);
-
-    // render tables (filtering handled by tabs)
-    function renderTable(bodyEl, lineFilter){
-      bodyEl.innerHTML = "";
-      all.filter(r => {
-        if(lineFilter === "keio") return parseInt(r.id.slice(1)) <= 54;
-        if(lineFilter === "inok") return parseInt(r.id.slice(1)) >= 81;
-        return true;
-      }).forEach(r=>{
-        const tr = document.createElement("tr");
-        tr.setAttribute("data-updown", r.updown);
-        tr.innerHTML = `<td>${r.updown}</td>
-          <td>${r.tr}</td>
-          <td>${r.ik}</td>
-          <td class="${r.syClass}">${r.sy}</td>
-          <td>${r.sr}</td>
-          <td>${r.pos}</td>
-          <td>${r.bs}</td>
-          <td>${r.delayLabel}</td>
-          <td>${r.remarks}</td>`;
-        bodyEl.appendChild(tr);
-      });
-    }
-    renderTable(keioTableBody,"keio");
-    renderTable(inokTableBody,"inok");
-
-    // setup tabs (bind once)
-    setupTabs();
-
-  }catch(err){
-    updateTimeEl.textContent = "更新失敗: " + (err.message||err);
-  }
-}
-
-/* tabs and filters */
-function setupTabs(){
-  function bind(id, tbody, line){
-    const el = document.getElementById(id);
-    const buttons = el.querySelectorAll("button");
-    buttons.forEach(btn=>{
-      if(btn._bound) return;
-      btn._bound = true;
-      btn.addEventListener("click", ()=>{
-        buttons.forEach(b=>b.classList.remove("active"));
-        btn.classList.add("active");
-        const filter = btn.dataset.filter;
-        tbody.querySelectorAll("tr").forEach(tr=>{
-          const updown = tr.getAttribute("data-updown");
-          tr.style.display = (filter==="all" || updown===filter) ? "" : "none";
+    // 表描画
+    function render(table,filter,line){
+      table.innerHTML=`<tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>`;
+      allTrains
+        .filter(t=>line==="keio"?(parseInt(t.id.slice(1))<=54):(parseInt(t.id.slice(1))>=81))
+        .filter(t=>filter==="all"||t.updown===filter)
+        .forEach(t=>{
+          const delayLabel=t.delay==="00"?"平常":`${t.delay}分遅れ`;
+          const row=`<tr>
+            <td>${t.updown}</td>
+            <td>${t.tr}</td>
+            <td>${t.ik}</td>
+            <td class="${t.syClass}">${t.sy}</td>
+            <td>${t.sr}</td>
+            <td>${t.pos}</td>
+            <td>${t.bs}</td>
+            <td>${delayLabel}</td>
+            <td data-remarks="${t.remarks}">${t.remarks}</td>
+          </tr>`;
+          table.insertAdjacentHTML("beforeend",row);
         });
-      });
-    });
-  }
-  bind("filterKeio", keioTableBody, "keio");
-  bind("filterInok", inokTableBody, "inok");
-}
-
-/* sorting: click header to sort (simple localeCompare) */
-function enableSorting(){
-  document.querySelectorAll("table").forEach(table=>{
-    const headers = table.querySelectorAll("thead th");
-    headers.forEach((th, idx)=>{
-      if(th._sortBound) return;
-      th._sortBound = true;
-      th.style.cursor = "pointer";
-      th.addEventListener("click", ()=>{
-        const tbody = table.querySelector("tbody");
-        const rows = Array.from(tbody.querySelectorAll("tr")).filter(r=>r.style.display!=="none");
-        const asc = !th.classList.contains("asc");
-        headers.forEach(h=>h.classList.remove("asc","desc"));
-        th.classList.add(asc?"asc":"desc");
-        rows.sort((a,b)=>{
-          const A = a.children[idx].textContent.trim();
-          const B = b.children[idx].textContent.trim();
-          // numeric compare if both numeric
-          const nA = parseFloat(A.replace(/[^0-9.-]/g,""));
-          const nB = parseFloat(B.replace(/[^0-9.-]/g,""));
-          if(!isNaN(nA) && !isNaN(nB)) return asc ? nA - nB : nB - nA;
-          return asc ? A.localeCompare(B,"ja") : B.localeCompare(A,"ja");
-        });
-        rows.forEach(r => tbody.appendChild(r));
-      });
-    });
-  });
-}
-
-/* clock update */
-setInterval(()=>{ if(checkAccess()){ updateLocalTime(); } },1000);
-
-/* start fetch loop only when unlocked */
-let fetchInterval = null;
-function startAutoFetch(){
-  if(fetchInterval) clearInterval(fetchInterval);
-  fetchAndRender();
-  fetchInterval = setInterval(fetchAndRender, 30000); // 30s
-  enableSorting();
-}
-function stopAutoFetch(){ if(fetchInterval) clearInterval(fetchInterval); fetchInterval = null; }
-
-if(checkAccess()){
-  startAutoFetch();
-} else {
-  stopAutoFetch();
-}
-
-/* unlock action also starts fetch */
-unlockBtn.addEventListener("click", ()=>{
-  if(checkAccess()){
-    startAutoFetch();
-  } else {
-    if(passInput.value === getStoredPass()){
-      localStorage.setItem(KEY_ACCESS,"granted");
-      startAutoFetch();
     }
-  }
-});
 
-/* when unlocking by stored access (on pageload) */
-if(checkAccess()){
-  startAutoFetch();
+    // 通知欄
+    const notifyList=document.getElementById("notifyList");
+    const notifications=[];
+    allTrains.forEach(t=>{
+      if(parseInt(t.delay)>=15)
+        notifications.push(`${t.tr}（${t.delay}分遅れ）`);
+      if(t.remarks.includes("車両交換予定"))
+        notifications.push(`${t.tr}（車両交換予定）`);
+    });
+    notifyList.innerHTML=notifications.length?
+      notifications.map(n=>`<li>${n}</li>`).join(""):
+      "<li>平常運転</li>";
+
+    localStorage.setItem("notifications",JSON.stringify({
+      expires:new Date(new Date().setHours(25,15,0,0)).getTime(),
+      list:notifications
+    }));
+
+    render(keioTable,"all","keio");
+    render(inokTable,"all","inok");
+
+    // タブ切替
+    function setupTabs(id,table,line){
+      document.querySelectorAll(`#${id} button`).forEach(btn=>{
+        btn.onclick=()=>{
+          document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.remove("active"));
+          btn.classList.add("active");
+          render(table,btn.dataset.filter,line);
+        };
+      });
+    }
+    setupTabs("filterKeio",keioTable,"keio");
+    setupTabs("filterInok",inokTable,"inok");
+
+  }catch(e){
+    document.getElementById("updateTime").textContent="更新失敗："+e.message;
+  }
 }
 
-/* logout should stop fetch and lock UI */
-btnLogout.addEventListener("click", ()=>{
-  localStorage.removeItem(KEY_ACCESS);
-  stopAutoFetch();
-  showLocked();
-});
+// 初回実行・自動更新
+fetchData();
+setInterval(fetchData,30000);
+setInterval(updateLocalTime,1000);
+updateLocalTime();
 
-/* restore notifications on load (if not expired) */
-window.addEventListener("load", ()=>{
-  const saved = loadNotifications();
-  if(saved.expires > Date.now()){
-    renderNotifications(saved);
+// 過去通知復元
+window.addEventListener("load",()=>{
+  const saved=JSON.parse(localStorage.getItem("notifications")||"{}");
+  if(saved.expires>Date.now()){
+    const list=document.getElementById("notifyList");
+    list.innerHTML=saved.list.length?
+      saved.list.map(n=>`<li>${n}</li>`).join(""):
+      "<li>平常運転</li>";
   }
 });
-
-/* clear expired notifications at 1:15 */
-setInterval(()=>{
-  const saved = loadNotifications();
-  if(saved.expires && saved.expires <= Date.now()){
-    saveNotifications({expires:0,list:[]});
-    renderNotifications({list:[]});
-  }
-}, 60000);
-
-/* close modal when clicking outside */
-modalSettings.addEventListener("click",(e)=>{ if(e.target===modalSettings) modalSettings.style.display="none"; });
-
-/* small UX: help to show default pass */
-document.getElementById("helpBtn").addEventListener("click", ()=>{ alert("初期パスワードは 0000 です"); });
-
 </script>
 </body>
 </html>
