@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>運行中列車</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #f6f8fa;
+    --text: #24292e;
+    --border: #d0d7de;
+    --accent: #0969da;
+    --table-bg: #ffffff;
+  }
+  [data-theme="dark"] {
+    --bg: #0d1117;
+    --text: #c9d1d9;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --table-bg: #161b22;
+  }
+
+  body {
+    font-family: "Segoe UI", "Hiragino Sans", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0 0 80px;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.8em;
+    margin: 25px 0 10px;
+  }
+
+  #updateTime, #localTime {
+    text-align: center;
+    font-size: 0.9em;
+    color: #6e7781;
+    margin: 0 0 5px;
+  }
+
+  .tab-buttons {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    gap: 5px;
+  }
+
+  .tab-buttons button {
+    background: var(--table-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 0.95em;
+    border-radius: 6px 6px 0 0;
+  }
+
+  .tab-buttons button.active {
+    background: var(--bg);
+    border-bottom: 2px solid var(--accent);
+    color: var(--accent);
+    font-weight: bold;
+  }
+
+  table {
+    border-collapse: collapse;
+    margin: 0 auto 30px;
+    width: 95%;
+    max-width: 1000px;
+    background: var(--table-bg);
+    border: 1px solid var(--border);
+    font-size: 0.9em;
+  }
+
+  th, td {
+    border: 1px solid var(--border);
+    padding: 6px 8px;
+    text-align: center;
+  }
+
+  th {
+    background: var(--bg);
+    cursor: pointer;
+  }
+
+  tr:hover {
+    background: rgba(150,150,150,0.08);
+  }
+
+  /* 種別色 */
+  .tokkyu { background: #d32f2f; color: #fff; }
+  .kyuko { background: #388e3c; color: #fff; }
+  .kaisoku { background: #1976d2; color: #fff; }
+  .kukan { background: #fbc02d; color: #000; }
+  .kakutei { background: #9e9e9e; color: #000; }
+
+  /* 通知欄 */
+  #alerts {
+    width: 95%;
+    max-width: 1000px;
+    margin: 20px auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--table-bg);
+    padding: 10px;
+    font-size: 0.9em;
+  }
+
+  #alerts h3 { margin: 0 0 8px; font-size: 1em; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+
+  #controls {
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  #controls button, #intervalSelect {
+    background: var(--table-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 10px;
+    margin: 3px;
+    cursor: pointer;
+  }
+
+  #controls button:hover {
+    background: var(--bg);
+  }
+</style>
+</head>
+<body>
+<h1>運行中列車</h1>
+<p id="updateTime">データ更新中...</p>
+<p id="localTime">現在時刻: --:--:--</p>
+
+<div class="tab-buttons">
+  <button id="keioTab" class="active" onclick="switchTab('keio')">京王線・相模原線</button>
+  <button id="inokTab" onclick="switchTab('inok')">井の頭線</button>
+</div>
+
+<div id="alerts">
+  <h3>通知</h3>
+  <div id="alertContent">現在、特記事項はありません。</div>
+</div>
+
+<div id="controls">
+  <label for="intervalSelect">更新間隔：</label>
+  <select id="intervalSelect">
+    <option value="30000">30秒</option>
+    <option value="60000" selected>1分</option>
+    <option value="120000">2分</option>
+    <option value="300000">5分</option>
+  </select>
+  <button onclick="toggleDarkMode()">🌗 ダークモード切替</button>
+</div>
+
+<div id="keioTableContainer">
+  <table id="keioTable">
+    <tr>
+      <th onclick="sortTable('keioTable',0)">列車番号</th>
+      <th>種別</th>
+      <th onclick="sortTable('keioTable',2)">上下</th>
+      <th onclick="sortTable('keioTable',3)">現在位置</th>
+      <th>行先</th>
+      <th>両数</th>
+      <th>番線</th>
+      <th>遅れ</th>
+      <th>備考</th>
+    </tr>
+  </table>
+</div>
+
+<div id="inokTableContainer" style="display:none;">
+  <table id="inokTable">
+    <tr>
+      <th onclick="sortTable('inokTable',0)">列車番号</th>
+      <th>種別</th>
+      <th onclick="sortTable('inokTable',2)">上下</th>
+      <th onclick="sortTable('inokTable',3)">現在位置</th>
+      <th>行先</th>
+      <th>両数</th>
+      <th>番線</th>
+      <th>遅れ</th>
+      <th>備考</th>
+    </tr>
+  </table>
+</div>
+
+<script>
+const idMap = {
+  001:"京王線新宿",002:"笹塚",003:"代田橋",004:"明大前",005:"下高井戸",006:"桜上水",007:"上北沢",008:"八幡山",
+  009:"芦花公園",010:"千歳烏山",011:"仙川",012:"つつじヶ丘",013:"柴崎",014:"国領",015:"布田",016:"調布",017:"西調布",
+  018:"飛田給",019:"武蔵野台",020:"多磨霊園",021:"東府中",022:"府中",023:"分倍河原",024:"中河原",025:"聖蹟桜ヶ丘",
+  026:"百草園",027:"高幡不動",028:"南平",029:"平山城址公園",030:"長沼",031:"北野",032:"京王八王子",
+  044:"京王多摩川",045:"京王稲田堤",046:"京王よみうりランド",047:"稲城",048:"若葉台",049:"京王永山",
+  050:"京王多摩センター",051:"京王堀之内",052:"南大沢",053:"多摩境",054:"橋本",
+  081:"渋谷",082:"神泉",083:"駒場東大前",084:"池ノ上",085:"下北沢",086:"新代田",087:"東松原",
+  088:"明大前",089:"永福町",090:"西永福",091:"浜田山",092:"高井戸",093:"富士見ヶ丘",094:"久我山",
+  095:"三鷹台",096:"井の頭公園",097:"吉祥寺",
+  101:"新宿三丁目",102:"曙橋",103:"市ヶ谷",104:"九段下",105:"神保町",106:"小川町",107:"岩本町",
+  108:"馬喰横山",109:"浜町",110:"森下",111:"菊川",112:"住吉",113:"西大島",114:"大島",115:"東大島",
+  116:"船堀",117:"一之江",118:"瑞江",119:"篠崎",120:"本八幡",
+  300:"京王線新宿・都営新宿線方面",301:"都営新宿線方面",302:"京王線新宿方面",303:"調布方面",
+  304:"高幡不動方面",305:"八幡山方面",306:"笹塚方面",
+  400:"京王八王子方面",401:"高尾山口方面",402:"橋本方面",403:"府中・府中競馬正門前方面",
+  501:"明大前・永福町方面",502:"吉祥寺方面"
+};
+
+const syMap = {
+  1:{name:"特急",class:"tokkyu"},
+  2:{name:"急行",class:"kyuko"},
+  3:{name:"快速",class:"kaisoku"},
+  5:{name:"区間急行",class:"kukan"},
+  6:{name:"各停",class:"kakutei"},
+  9:{name:"ライナー",class:"tokkyu"},
+  11:{name:"ライナー",class:"tokkyu"}
+};
+
+let updateInterval = 60000;
+let updateTimer;
+
+function updateLocalTime(){
+  const now = new Date();
+  const f = n => String(n).padStart(2,"0");
+  document.getElementById("localTime").textContent = `現在時刻: ${f(now.getHours())}:${f(now.getMinutes())}:${f(now.getSeconds())}`;
+}
+
+function switchTab(tab){
+  document.getElementById("keioTab").classList.toggle("active",tab==="keio");
+  document.getElementById("inokTab").classList.toggle("active",tab==="inok");
+  document.getElementById("keioTableContainer").style.display = (tab==="keio") ? "block":"none";
+  document.getElementById("inokTableContainer").style.display = (tab==="inok") ? "block":"none";
+}
+
+function toggleDarkMode(){
+  const cur = document.body.dataset.theme === "dark" ? "light" : "dark";
+  document.body.dataset.theme = cur;
+  localStorage.setItem("theme",cur);
+}
+
+document.body.dataset.theme = localStorage.getItem("theme") || "light";
+
+document.getElementById("intervalSelect").addEventListener("change", e=>{
+  clearInterval(updateTimer);
+  updateInterval = parseInt(e.target.value);
+  updateTimer = setInterval(fetchData, updateInterval);
+});
+
+async function fetchData(){
+  try {
+    const res = await fetch("https://i.opentidkeio.jp/data/traffic_info.json?cache="+Date.now());
+    const data = await res.json();
+
+    const t = data.up?.[0]?.dt?.[0];
+    if(t){
+      document.getElementById("updateTime").textContent = 
+        `最終更新: ${t.yy}/${t.mt}/${t.dy} ${t.hh}:${t.mm}:${t.ss}`;
+    }
+
+    const keioT = document.getElementById("keioTable");
+    const inokT = document.getElementById("inokTable");
+    keioT.querySelectorAll("tr:not(:first-child)").forEach(tr=>tr.remove());
+    inokT.querySelectorAll("tr:not(:first-child)").forEach(tr=>tr.remove());
+
+    const alerts = [];
+
+    const allTrains = [];
+    function addRows(section,table){
+      section.forEach(st=>{
+        st.ps.forEach(p=>{
+          const sy = syMap[p.sy] || {name:"不明",class:""};
+          const ik = idMap[p.ik_tr] || "不明";
+          const updown = (parseInt(p.tr)%2===0) ? "上り" : "下り";
+          let remarks = "";
+          if(sy.name==="特急" && p.sr==="8") remarks="特急（8両編成）";
+          if(p.ik_tr>=101 && p.ik_tr<=120) remarks += (remarks?", ":"")+"都営新宿線直通";
+          allTrains.push(p.tr);
+
+          const delayMin = parseInt(p.dl);
+          if(delayMin>=15) alerts.push(` ${p.tr}列車 ${delayMin}分遅れ`);
+
+          const pos = idMap[p.id?.slice(1)] || "位置不明";
+
+          const row = `<tr><td>${p.tr}</td><td class="${sy.class}">${sy.name}</td><td>${updown}</td><td>${pos}</td><td>${ik}</td><td>${p.sr}</td><td>${p.bs}</td><td>${p.dl==="00"?"平常":p.dl+"分"}</td><td>${remarks}</td></tr>`;
+          table.insertAdjacentHTML("beforeend",row);
+        });
+      });
+    }
+
+    if(data.TS) addRows(data.TS,keioT);
+    if(data.TB) addRows(data.TB,inokT);
+
+    // 車両交換予定チェック
+    const dup = allTrains.filter((v,i,a)=>a.indexOf(v)!==i);
+    dup.forEach(d=>{
+      alerts.push(` ${d}列車 車両交換予定`);
+    });
+
+    document.getElementById("alertContent").innerHTML = alerts.length? alerts.join("<br>"):"現在、特記事項はありません。";
+
+  }catch(e){
+    document.getElementById("updateTime").textContent = "更新失敗：" + e.message;
+  }
+}
+
+function sortTable(id,col){
+  const table=document.getElementById(id);
+  const rows=[...table.rows].slice(1);
+  const asc=!table.asc;
+  rows.sort((a,b)=>a.cells[col].innerText.localeCompare(b.cells[col].innerText,"ja",{numeric:true})*(asc?1:-1));
+  rows.forEach(r=>table.appendChild(r));
+  table.asc=asc;
+}
+
+// 初期起動
+fetchData();
+updateLocalTime();
+updateTimer = setInterval(fetchData, updateInterval);
+setInterval(updateLocalTime,1000);
+</script>
+</body>
+</html>
