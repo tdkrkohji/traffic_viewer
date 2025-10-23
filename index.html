@@ -1,246 +1,251 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>京王線・井の頭線 在線状況</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>運行中列車</title>
 <style>
-  :root{
-    --tokkyu:#d32f2f; /* 赤 */
-    --kyuko:#388e3c;  /* 緑 */
-    --kaisoku:#1976d2;/* 青 */
-    --kukan:#fff176;  /* 黄 */
-    --kakutei:#e0e0e0;/* 灰 */
-    --accent:#1976d2;
-  }
-  body{font-family:Segoe UI,system-ui,-apple-system,"Helvetica Neue",Arial;margin:0;background:#f7f8fa;color:#222}
-  header{padding:18px 12px;text-align:center}
-  h1{margin:0;font-size:20px}
-  #meta{display:flex;gap:12px;justify-content:center;align-items:center;margin-top:8px}
-  #updateTime,#localTime{color:#555;font-size:13px}
-  main{padding:10px 8px 140px}
-  h2{margin:18px 0 8px;font-size:16px}
-  .tab-buttons{display:flex;justify-content:center;border-bottom:2px solid #e3e6ea;margin:0 auto 10px;max-width:1000px}
-  .tab-buttons button{flex:1;border:0;background:none;padding:10px 8px;font-size:15px;cursor:pointer;border-bottom:3px solid transparent;transition:.15s}
-  .tab-buttons button:hover{background:#f3f5f7}
-  .tab-buttons button.active{border-bottom:3px solid var(--accent);color:var(--accent);font-weight:600}
-  table{width:95%;max-width:1000px;margin:10px auto 24px;border-collapse:collapse;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
-  th,td{padding:8px 10px;border:1px solid #e6e9ec;text-align:center;font-size:14px}
-  th{background:#fbfdff;position:sticky;top:0}
-  tr:hover td{background:#fbfbfb}
-  .tokkyu{color:#fff;background:var(--tokkyu)}
-  .kyuko{color:#fff;background:var(--kyuko)}
-  .kaisoku{color:#fff;background:var(--kaisoku)}
-  .kukan{color:#000;background:var(--kukan)}
-  .kakutei{color:#000;background:var(--kakutei)}
-  /* notification bottom */
-  #notification{position:fixed;left:8px;right:8px;bottom:8px;background:#fff3f3;border:1px solid #f2c0c0;padding:10px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.06);max-height:160px;overflow:auto}
-  #notification h3{margin:0 0 8px;color:#b71c1c;text-align:center}
-  #notification ul{margin:0;padding:0;list-style:none}
-  #notification li{padding:4px 6px;border-radius:4px;margin-bottom:4px}
-  .notif-delay{background:#ffdfe0;color:#900}
-  .notif-exchange{background:#fff6d6;color:#8a5b00}
-  @media (max-width:520px){
-    th,td{font-size:12px;padding:6px}
-    .tab-buttons button{font-size:14px;padding:9px}
-    #notification{left:6px;right:6px;bottom:6px}
-  }
+:root {
+  --bg:#f7f8fa; --fg:#222;
+  --table-bg:#fff; --table-border:#e6e9ec;
+  --th-bg:#fbfdff;
+  --notif-bg:#fff3f3; --notif-border:#f2c0c0;
+  --tokkyu:#d32f2f; --kyuko:#388e3c;
+  --kaisoku:#1976d2; --kukan:#fff176;
+  --kakutei:#e0e0e0;
+}
+body.dark {
+  --bg:#1e1e1e; --fg:#ddd;
+  --table-bg:#2a2a2a; --table-border:#3a3a3a;
+  --th-bg:#333; --notif-bg:#2b2b2b; --notif-border:#555;
+  --kakutei:#555;
+}
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial;
+  margin: 0; background: var(--bg); color: var(--fg);
+  font-size: 15px; transition: background 0.3s, color 0.3s;
+}
+header { padding: 16px 12px; text-align: center; position: relative; }
+h1 { margin: 0; font-size: 20px; }
+#themeToggle { position: absolute; right: 15px; top: 15px; border: none; background: none; font-size: 20px; cursor: pointer; color: var(--fg); }
+#meta { display: flex; gap: 12px; justify-content: center; align-items: center; margin-top: 8px; font-size: 13px; }
+
+.tabs {
+  display: flex; justify-content: center; margin: 10px auto 0; gap: 10px;
+}
+.tab-btn {
+  border: 1px solid var(--table-border); background: var(--th-bg);
+  padding: 6px 12px; cursor: pointer; border-radius: 6px 6px 0 0;
+  font-size: 14px; transition: all 0.3s;
+}
+.tab-btn.active {
+  background: var(--table-bg); border-bottom: 1px solid var(--table-bg);
+  font-weight: bold;
+}
+
+main { padding: 10px 8px 140px; }
+h2 { margin: 18px 0 8px; font-size: 17px; text-align: center; }
+.table-container { overflow-x: auto; }
+table { width: 95%; max-width: 1000px; margin: 0 auto 24px; border-collapse: collapse;
+        background: var(--table-bg); box-shadow: 0 1px 3px rgba(0,0,0,0.04); min-width: 600px; }
+th, td { padding: 8px 10px; border: 1px solid var(--table-border); text-align: center;
+         font-size: 14px; white-space: nowrap; }
+th { background: var(--th-bg); position: sticky; top: 0; cursor: pointer; user-select: none; }
+th.sorted-asc::after { content:" ▲"; font-size:12px; }
+th.sorted-desc::after { content:" ▼"; font-size:12px; }
+tr:hover td { background: rgba(0,0,0,0.05); }
+
+.tokkyu { color:#fff; background:var(--tokkyu); }
+.kyuko { color:#fff; background:var(--kyuko); }
+.kaisoku { color:#fff; background:var(--kaisoku); }
+.kukan { color:#000; background:var(--kukan); }
+.kakutei { color:#000; background:var(--kakutei); }
+
+#notification {
+  position: fixed; left: 8px; right: 8px; bottom: 8px;
+  background: var(--notif-bg); border: 1px solid var(--notif-border);
+  padding: 10px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  max-height: 180px; overflow: auto; transition: background 0.3s, color 0.3s;
+  font-size: 14px;
+}
+#notification h3 { margin: 0 0 8px; text-align: center; font-size: 15px; }
+#notification ul { margin: 0; padding: 0; list-style: none; }
+#notification li { padding: 4px 6px; border-radius: 4px; margin-bottom: 4px; }
+.notif-delay { background:#ffdfe0; color:#900; }
+.notif-exchange { background:#fff6d6; color:#8a5b00; }
+body.dark .notif-delay { background:#662828; color:#ffbebe; }
+body.dark .notif-exchange { background:#554400; color:#ffeaaa; }
+
+@media (max-width:600px){
+  h1{font-size:18px;} h2{font-size:15px;} body{font-size:14px;}
+  th,td{font-size:13px;padding:6px 8px;} #notification{font-size:13px;padding:8px;}
+}
 </style>
 </head>
 <body>
 <header>
-  <h1>京王線・井の頭線 在線状況</h1>
+  <h1>運行中列車</h1>
+  <button id="themeToggle">🌙</button>
   <div id="meta">
     <div id="updateTime">データ更新中...</div>
     <div id="localTime">現在時刻: --:--:--</div>
   </div>
 </header>
 
-<main>
-  <section>
-    <h2>京王線・相模原線</h2>
-    <div class="tab-buttons" id="filterKeio">
-      <button data-filter="all" class="active">全て</button>
-      <button data-filter="上り">上り</button>
-      <button data-filter="下り">下り</button>
-    </div>
-    <table id="keioTable"><thead><tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr></thead><tbody></tbody></table>
-  </section>
+<div class="tabs">
+  <button class="tab-btn active" data-tab="keio">京王線・相模原線</button>
+  <button class="tab-btn" data-tab="inok">井の頭線</button>
+</div>
 
-  <section>
-    <h2>井の頭線</h2>
-    <div class="tab-buttons" id="filterInok">
-      <button data-filter="all" class="active">全て</button>
-      <button data-filter="上り">上り</button>
-      <button data-filter="下り">下り</button>
+<main>
+  <div id="keio" class="tab-content">
+    <div class="table-container">
+      <table id="keioTable">
+        <thead>
+          <tr>
+            <th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th>
+            <th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
-    <table id="inokTable"><thead><tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr></thead><tbody></tbody></table>
-  </section>
+  </div>
+
+  <div id="inok" class="tab-content" style="display:none;">
+    <div class="table-container">
+      <table id="inokTable">
+        <thead>
+          <tr>
+            <th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th>
+            <th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
 </main>
 
-<div id="notification" aria-live="polite">
-  <h3>🚨 運行通知</h3>
-  <ul id="notifyList"><li>読み込み中...</li></ul>
+<div id="notification">
+  <h3>通知</h3>
+  <ul id="notifList"></ul>
 </div>
 
 <script>
-const idMap={1:"京王線新宿",2:"笹塚",3:"代田橋",4:"明大前",5:"下高井戸",6:"桜上水",7:"上北沢",8:"八幡山",9:"芦花公園",10:"千歳烏山",11:"仙川",12:"つつじヶ丘",13:"柴崎",14:"国領",15:"布田",16:"調布",17:"西調布",18:"飛田給",19:"武蔵野台",20:"多磨霊園",21:"東府中",22:"府中",23:"分倍河原",24:"中河原",25:"聖蹟桜ヶ丘",26:"百草園",27:"高幡不動",28:"南平",29:"平山城址公園",30:"長沼",31:"北野",32:"京王八王子",44:"京王多摩川",45:"京王稲田堤",46:"京王よみうりランド",47:"稲城",48:"若葉台",49:"京王永山",50:"京王多摩センター",51:"京王堀之内",52:"南大沢",53:"多摩境",54:"橋本",81:"渋谷",82:"神泉",83:"駒場東大前",84:"池ノ上",85:"下北沢",86:"新代田",87:"東松原",88:"明大前",89:"永福町",90:"西永福",91:"浜田山",92:"高井戸",93:"富士見ヶ丘",94:"久我山",95:"三鷹台",96:"井の頭公園",97:"吉祥寺"};
-const syMap={1:{name:"特急",class:"tokkyu"},2:{name:"急行",class:"kyuko"},3:{name:"快速",class:"kaisoku"},5:{name:"区間急行",class:"kukan"},6:{name:"各停",class:"kakutei"},9:{name:"ライナー",class:"tokkyu"},11:{name:"ライナー",class:"tokkyu"}};
+// ===== テーマ切替 =====
+const themeToggle=document.getElementById("themeToggle");
+if(localStorage.getItem("theme")==="dark"){document.body.classList.add("dark");themeToggle.textContent="☀️";}
+themeToggle.onclick=()=>{
+  const dark=document.body.classList.toggle("dark");
+  themeToggle.textContent=dark?"☀️":"🌙";
+  localStorage.setItem("theme",dark?"dark":"light");
+};
 
-const updateTimeEl=document.getElementById("updateTime");
-const localTimeEl=document.getElementById("localTime");
-const keioTableBody=document.querySelector("#keioTable tbody");
-const inokTableBody=document.querySelector("#inokTable tbody");
-const notifyList=document.getElementById("notifyList");
+// ===== タブ切替 =====
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c=>c.style.display="none");
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.tab).style.display="block";
+  };
+});
 
-function nowTime(){return new Date().toLocaleTimeString("ja-JP",{hour12:false});}
-function updateLocalTime(){localTimeEl.textContent=`現在時刻: ${nowTime()}`;}
-setInterval(updateLocalTime,1000);
-
-function notifExpiry(){
-  const now=new Date();
-  const tomorrow=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,1,15,0);
-  return tomorrow.getTime();
+// ===== 時計 =====
+function updateClock(){
+  document.getElementById("localTime").textContent="現在時刻: "+new Date().toLocaleTimeString();
 }
-function loadNotif(){
-  try{
-    const d=JSON.parse(localStorage.getItem("keio_notif")||"{}");
-    if(d.expires && d.expires>Date.now())return d;
-  }catch{}
-  return {expires:0,list:[]};
-}
-function saveNotif(obj){localStorage.setItem("keio_notif",JSON.stringify(obj));}
-function renderNotif(obj){
-  notifyList.innerHTML="";
-  if(!obj.list||!obj.list.length){notifyList.innerHTML="<li>平常運転</li>";return;}
-  obj.list.forEach(i=>{
-    const li=document.createElement("li");
-    li.textContent=i.text+(i.time?` [${i.time}]`:"");
-    li.className=i.type==="delay"?"notif-delay":"notif-exchange";
-    notifyList.appendChild(li);
+setInterval(updateClock,1000);updateClock();
+
+// ===== データマップ =====
+const idMap={
+  1:"京王線新宿",2:"笹塚",3:"代田橋",4:"明大前",5:"下高井戸",6:"桜上水",7:"上北沢",8:"八幡山",
+  9:"芦花公園",10:"千歳烏山",11:"仙川",12:"つつじヶ丘",13:"柴崎",14:"国領",15:"布田",16:"調布",
+  17:"西調布",18:"飛田給",19:"武蔵野台",20:"多磨霊園",21:"東府中",22:"府中",23:"分倍河原",
+  24:"中河原",25:"聖蹟桜ヶ丘",26:"百草園",27:"高幡不動",28:"南平",29:"平山城址公園",30:"長沼",
+  31:"北野",32:"京王八王子",44:"京王多摩川",45:"京王稲田堤",46:"京王よみうりランド",47:"稲城",
+  48:"若葉台",49:"京王永山",50:"京王多摩センター",51:"京王堀之内",52:"南大沢",53:"多摩境",54:"橋本",
+  81:"渋谷",82:"神泉",83:"駒場東大前",84:"池ノ上",85:"下北沢",86:"新代田",87:"東松原",88:"明大前",
+  89:"永福町",90:"西永福",91:"浜田山",92:"高井戸",93:"富士見ヶ丘",94:"久我山",95:"三鷹台",96:"井の頭公園",
+  97:"吉祥寺",
+  101:"新宿三丁目",102:"曙橋",103:"市ヶ谷",104:"九段下",105:"神保町",106:"小川町",107:"岩本町",
+  108:"馬喰横山",109:"浜町",110:"森下",111:"菊川",112:"住吉",113:"西大島",114:"大島",115:"東大島",
+  116:"船堀",117:"一之江",118:"瑞江",119:"篠崎",120:"本八幡",
+  300:"京王線新宿・都営新宿線方面",301:"都営新宿線方面",302:"京王線新宿方面",303:"調布方面",
+  304:"高幡不動方面",305:"八幡山方面",306:"笹塚方面",400:"京王八王子方面",401:"高尾山口方面",
+  402:"橋本方面",403:"府中・府中競馬正門前方面",501:"明大前・永福町方面",502:"吉祥寺方面"
+};
+const syMap={1:{name:"特急",class:"tokkyu"},2:{name:"急行",class:"kyuko"},3:{name:"快速",class:"kaisoku"},
+5:{name:"区間急行",class:"kukan"},6:{name:"各停",class:"kakutei"},9:{name:"ライナー",class:"tokkyu"},
+11:{name:"ライナー",class:"tokkyu"}};
+
+// ===== 並び替え =====
+function makeSortable(table){
+  const ths=table.querySelectorAll("th");
+  ths.forEach((th,i)=>{
+    th.addEventListener("click",()=>{
+      const rows=[...table.tBodies[0].rows];
+      const asc=!th.classList.contains("sorted-asc");
+      ths.forEach(x=>x.classList.remove("sorted-asc","sorted-desc"));
+      th.classList.add(asc?"sorted-asc":"sorted-desc");
+      rows.sort((a,b)=>{
+        const A=a.cells[i].innerText,B=b.cells[i].innerText;
+        if(!isNaN(A)&&!isNaN(B))return asc?A-B:B-A;
+        return asc?A.localeCompare(B,"ja"):B.localeCompare(A,"ja");
+      });
+      rows.forEach(r=>table.tBodies[0].appendChild(r));
+    });
   });
 }
-function getPosLabel(id){
-  const n=parseInt(id.slice(1));
-  if(id.startsWith("E"))return`${idMap[n]}駅構内`;
-  if(id.startsWith("U"))return`${idMap[n+1]||"不明"}〜${idMap[n]||"不明"}間 上り`;
-  if(id.startsWith("D"))return`${idMap[n]||"不明"}〜${idMap[n-1]||"不明"}間 下り`;
-  return"不明";
-}
+
+// ===== データ取得 =====
 async function fetchData(){
   try{
     const res=await fetch("https://i.opentidkeio.jp/data/traffic_info.json?cache="+Date.now());
     const data=await res.json();
     const t=data.up?.[0]?.dt?.[0];
-    if(t){
-      const hh=String(parseInt(t.hh)%24).padStart(2,"0");
-      updateTimeEl.textContent=`データ最終更新: ${t.yy}/${t.mt}/${t.dy} ${hh}:${t.mm}:${t.ss}`;
-    }
-    const all=[];
-    function collect(section,line){
+    if(t)document.getElementById("updateTime").textContent=`データ最終更新: ${t.yy}/${t.mt}/${t.dy} ${t.hh}:${t.mm}:${t.ss}`;
+    const keio=document.querySelector("#keioTable tbody");
+    const inok=document.querySelector("#inokTable tbody");
+    keio.innerHTML=""; inok.innerHTML="";
+    const notif=document.querySelector("#notifList");
+    notif.innerHTML=""; const note=[],trainIDs=new Map();
+
+    function render(section,tbody){
       section.forEach(st=>{
         st.ps.forEach(p=>{
-          const id=st.id,tr=(p.tr||"").trim();
-          const sy=syMap[p.sy]?syMap[p.sy].name:"不明";
-          const syClass=syMap[p.sy]?syMap[p.sy].class:"";
-          const ik=idMap[(p.ik_tr||"").padStart(3,"0")]||"不明";
-          const pos=getPosLabel(id);
-          const updown=parseInt(id.slice(1))%2===0?"上り":"下り";
-          const delay=parseInt(p.dl)||0;
-          all.push({id,line,tr,sy,syClass,ik,pos,updown,sr:p.sr||"",bs:p.bs||"",delay,delayLabel:p.dl==="00"?"平常":p.dl+"分遅れ",remarks:""});
+          const trNo=p.tr.trim(); const sy=syMap[p.sy]||{name:"不明",class:""};
+          const ik=parseInt(p.ik_tr),dest=idMap[ik]||"不明";
+          const updown=(parseInt(st.id.slice(1))%2===0)?"上り":"下り";
+          const pos=idMap[st.id.slice(1)]||"区間不明";
+          const delay=parseInt(p.dl)||0; const delayTxt=delay?`${delay}分遅れ`:"平常";
+          let remarks=[];
+          if(sy.name==="特急"&&p.sr==="8")remarks.push("特急（8両編成）");
+          if(trainIDs.has(trNo)){remarks.push("車両交換予定");note.push({t:"交換",text:`${trNo}：車両交換予定`});}
+          else trainIDs.set(trNo,true);
+          if(delay>=15)note.push({t:"遅延",text:`${trNo}：${delay}分遅れ`});
+          if(ik>=101&&ik<=120)remarks.push("都営新宿線直通");
+          tbody.insertAdjacentHTML("beforeend",
+            `<tr><td>${updown}</td><td>${trNo}</td><td>${dest}</td><td class="${sy.class}">${sy.name}</td>
+             <td>${p.sr}</td><td>${pos}</td><td>${p.bs}</td><td>${delayTxt}</td><td>${remarks.join("・")}</td></tr>`);
         });
       });
     }
-    if(data.TS)collect(data.TS,"keio");
-    if(data.TB)collect(data.TB,"inok");
-
-    // 備考
-    const count={};
-    all.forEach(x=>count[x.tr]=(count[x.tr]||0)+1);
-    all.forEach(x=>{
-      if(x.sy==="特急"&&x.sr==="8")x.remarks="特急（8両編成）";
-      if(count[x.tr]>1)x.remarks+=(x.remarks?"／":"")+"車両交換予定";
+    if(data.TS)render(data.TS,keio);
+    if(data.TB)render(data.TB,inok);
+    note.forEach(n=>{
+      const li=document.createElement("li");
+      li.textContent=n.text;
+      li.classList.add(n.t==="遅延"?"notif-delay":"notif-exchange");
+      notif.appendChild(li);
     });
-
-    // 通知
-    let notif=loadNotif();
-    if(!notif.expires||notif.expires<Date.now())notif={expires:notifExpiry(),list:[]};
-    function push(type,text){
-      if(!notif.list.find(i=>i.text===text))notif.list.push({type,text,time:nowTime()});
-    }
-    all.forEach(x=>{
-      if(x.delay>=15)push("delay",`${x.tr}（${x.delay}分遅れ）`);
-      if(x.remarks.includes("車両交換予定"))push("exchange",`${x.tr}（車両交換予定）`);
-    });
-    saveNotif(notif);renderNotif(notif);
-
-    function render(table,line){
-      table.innerHTML="";
-      all.filter(r=>r.line===line).forEach(r=>{
-        const tr=document.createElement("tr");
-        tr.dataset.updown=r.updown;
-        tr.innerHTML=`<td>${r.updown}</td><td>${r.tr}</td><td>${r.ik}</td><td class="${r.syClass}">${r.sy}</td><td>${r.sr}</td><td>${r.pos}</td><td>${r.bs}</td><td>${r.delayLabel}</td><td>${r.remarks}</td>`;
-        table.appendChild(tr);
-      });
-    }
-    render(keioTableBody,"keio");
-    render(inokTableBody,"inok");
-    setupTabs();
-  }catch(e){
-    updateTimeEl.textContent="更新失敗："+e.message;
-  }
+    makeSortable(document.getElementById("keioTable"));
+    makeSortable(document.getElementById("inokTable"));
+  }catch(e){document.getElementById("updateTime").textContent="更新失敗："+e.message;}
 }
-function setupTabs(){
-  function bind(id,tbody){
-    const btns=document.getElementById(id).querySelectorAll("button");
-    btns.forEach(btn=>{
-      if(btn._b)return;
-      btn._b=true;
-      btn.addEventListener("click",()=>{
-        btns.forEach(b=>b.classList.remove("active"));
-        btn.classList.add("active");
-        const f=btn.dataset.filter;
-        tbody.querySelectorAll("tr").forEach(r=>{
-          const up=r.dataset.updown;
-          r.style.display=f==="all"||f===up?"":"none";
-        });
-      });
-    });
-  }
-  bind("filterKeio",keioTableBody);
-  bind("filterInok",inokTableBody);
-}
-function enableSorting(){
-  document.querySelectorAll("table").forEach(t=>{
-    const hs=t.querySelectorAll("th");
-    hs.forEach((th,i)=>{
-      if(th._s)return;
-      th._s=true;th.style.cursor="pointer";
-      th.addEventListener("click",()=>{
-        const tb=t.querySelector("tbody");
-        const rs=Array.from(tb.querySelectorAll("tr")).filter(r=>r.style.display!=="none");
-        const asc=!th.classList.contains("asc");
-        hs.forEach(h=>h.classList.remove("asc","desc"));
-        th.classList.add(asc?"asc":"desc");
-        rs.sort((a,b)=>{
-          const A=a.children[i].textContent.trim();
-          const B=b.children[i].textContent.trim();
-          const nA=parseFloat(A.replace(/[^0-9.-]/g,""));
-          const nB=parseFloat(B.replace(/[^0-9.-]/g,""));
-          if(!isNaN(nA)&&!isNaN(nB))return asc?nA-nB:nB-nA;
-          return asc?A.localeCompare(B,"ja"):B.localeCompare(A,"ja");
-        });
-        rs.forEach(r=>tb.appendChild(r));
-      });
-    });
-  });
-}
-fetchData();enableSorting();setInterval(fetchData,30000);
-setInterval(()=>{
-  const d=loadNotif();
-  if(d.expires<=Date.now()){saveNotif({expires:0,list:[]});renderNotif({list:[]});}
-},60000);
-updateLocalTime();
+fetchData();
+setInterval(fetchData,30000);
 </script>
 </body>
 </html>
