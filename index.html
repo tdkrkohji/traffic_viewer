@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>京王線・井の頭線 在線状況（30秒自動更新）</title>
+<title>京王線・井の頭線 在線状況</title>
 <style>
   body { font-family: "Segoe UI", sans-serif; text-align: center; background: #f8f8f8; margin-bottom: 50px; }
   h1, h2 { margin-top: 30px; }
@@ -109,9 +109,9 @@ async function fetchData() {
   }
 }
 
-// 初回実行 & 30秒ごと自動更新
+// 初回実行 & 1秒ごと自動更新
 fetchData();
-setInterval(fetchData, 30000);
+setInterval(fetchData, 1000);
 setInterval(updateLocalTime, 1000);
 updateLocalTime();
 </script>
