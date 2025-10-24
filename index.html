@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja" data-version="v0.1.31c">
+<html lang="ja" data-version="v0.1.36">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — v0.1.31c</title>
+<title>運行中列車 — v0.1.36</title>
 <style>
 /* 基本スタイル（GitHub風・レスポンシブ） */
 :root{
@@ -570,60 +570,58 @@ function startAutoFetch(ms){
 fetchAndRender();
 
 
-
-/**
- * Toei.txt照合機能（追記版）
- * - ファイル形式: 「列車番号,運用情報」 のCSV形式
- * - 例: 1234A,都営新宿線○○運用
- * - index.html上で tr 列を照合し、合致すれば「備考」列の末尾に追記
- */
-
-async function loadToeiMap() {
+</script>
+<script>
+// ▼ Toei運用データを読み込み、列車番号と照合して表示する処理
+async function appendToeiOperationLabels() {
   try {
+    // toei.txt を取得
     const res = await fetch("toei.txt");
     if (!res.ok) throw new Error("toei.txt が見つかりません");
-    const txt = await res.text();
-    const map = {};
-    txt.split(/\r?\n/).forEach(line => {
-      const [tr, op] = line.split(",");
-      if (tr && op) map[tr.trim()] = op.trim();
+    const text = await res.text();
+
+    // テキスト解析：運用番号ごとにマップ化
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+    const toeiMap = {};  // { 列車番号: 運用番号 }
+    let currentOperation = "";
+
+    for (const line of lines) {
+      if (/^\d+T$/.test(line)) {
+        currentOperation = line;
+      } else {
+        const ids = line.split(",").map(id => id.trim()).filter(Boolean);
+        ids.forEach(id => {
+          toeiMap[id] = currentOperation;
+        });
+      }
+    }
+
+    // 表内の列車番号と照合して、左側に運用番号を追記
+    document.querySelectorAll("table tbody tr").forEach(row => {
+      const cells = row.querySelectorAll("td");
+      if (cells.length >= 2) {
+        const trId = (cells[1].textContent || "").trim();
+        const operation = toeiMap[trId];
+        if (operation) {
+          // 既存の列車番号の左に運用番号を挿入
+          cells[1].innerHTML = `<span style="color:#00a; font-weight:bold; margin-right:4px;">${operation}</span>${cells[1].innerHTML}`;
+        }
+      }
     });
-    console.log("[toei.txt 読込完了]", Object.keys(map).length, "件");
-    return map;
+
+    console.log("✅ toei.txt の運用照合が完了しました");
+
   } catch (e) {
-    console.warn("[toei.txt 読込失敗]", e);
-    return {};
+    console.error("toei.txt の読込エラー:", e);
   }
 }
 
-// 既存の fetchAndRender 完了後に呼び出し
-async function appendToeiOperations() {
-  const toeiMap = await loadToeiMap();
-  if (!toeiMap || Object.keys(toeiMap).length === 0) return;
-
-  // すべてのテーブルを対象
-  document.querySelectorAll("table tbody tr").forEach(trEl => {
-    const trNum = trEl.cells[1]?.innerText?.trim();
-    if (trNum && toeiMap[trNum]) {
-      const remarksEl = trEl.cells[8];
-      const orig = remarksEl.innerText.trim();
-      const appendText = toeiMap[trNum];
-      // 同じ内容が重複しないようにする
-      if (!orig.includes(appendText)) {
-        remarksEl.innerText = orig ? orig + "・" + appendText : appendText;
-      }
-    }
-  });
-}
-
-// fetchAndRender の後に上書きせず「フック」追加
-const originalFetchAndRender = fetchAndRender;
+// メイン更新処理(fetchAndRender)のあとに呼び出す
+const origFetchAndRender = fetchAndRender;
 fetchAndRender = async function() {
-  await originalFetchAndRender();
-  await appendToeiOperations();
+  await origFetchAndRender();
+  await appendToeiOperationLabels();
 };
-
-/* --- ↑↑↑↑↑ ここまで追記部分 ↑↑↑↑↑ --- */
 </script>
 </body>
 </html>
