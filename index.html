@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — v0.1.31</title>
+<title>運行中列車 — v0.1.35</title>
 <style>
 /* 基本スタイル（GitHub風・レスポンシブ） */
 :root{
@@ -568,8 +568,7 @@ function startAutoFetch(ms){
 
 /* 初回実行 */
 fetchAndRender();
-<!-- ▼▼▼ この部分を index.html の一番下に追加 ▼▼▼ -->
-<script>
+
 /* === 運用番号表示機能追加 ===
    - 外部ファイル toei.txt を読み込み
    - 列車番号(tr)と照合して運用番号を返す
@@ -647,8 +646,7 @@ renderFromSection = function(section) {
 document.addEventListener("DOMContentLoaded", () => {
   loadOperationMap();
 });
-</script>
-<!-- ▲▲▲ ここまで追加 ▲▲▲ -->
+
 </script>
 </body>
 </html>
