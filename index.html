@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — v0.1.37</title>
+<title>運行中列車 — v0.1.38</title>
 <style>
 /* 基本スタイル（GitHub風・レスポンシブ） */
 :root{
@@ -322,14 +322,18 @@ function bindSortable(table){
         const A = a.cells[idx].innerText.trim();
         const B = b.cells[idx].innerText.trim();
 
-        // ★ 改修箇所: 現在位置列のソートを駅コード順にする
+        // ★ 改修箇所: 現在位置列のソートを列車ID末尾3桁で判定
         const headerKey = th.getAttribute("data-key");
         if (headerKey === "pos") {
-          // E016, D022 などから数値部分を抽出
-          const numA = parseInt(A.slice(-3), 10) || 9999;
-          const numB = parseInt(B.slice(-3), 10) || 9999;
+          const idA = a.getAttribute("data-train-id") || "";
+          const idB = b.getAttribute("data-train-id") || "";
+
+          // idの末尾3桁を抽出して数値化
+          const numA = parseInt(idA.slice(-3), 10) || 9999;
+          const numB = parseInt(idB.slice(-3), 10) || 9999;
+
           return asc ? numA - numB : numB - numA;
-        }
+}
 
         // 通常の数値／文字列ソート
         const nA = parseFloat(A.replace(/[^\d.-]/g,""));
@@ -443,6 +447,8 @@ async function fetchAndRender(){
             <td>${dlLabel}</td>
             <td>${remarks.join("・")}</td>
           `;
+          // ★ 列車IDをHTMLに埋め込む（ソートに使う）
+          row.setAttribute("data-train-id", st.id || "");
           // 振り分け先は line ("keio" or "inok") + up/down
           const targetBody = document.querySelector(`#${line}-${updown === "上り" ? "up" : "down"} tbody`);
           if(targetBody) targetBody.appendChild(row);
