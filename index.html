@@ -276,7 +276,7 @@ function renderNotifs(){ const out=document.getElementById("alertsInner"); out.i
 function nowTime(){ return new Date().toLocaleTimeString("ja-JP",{hour12:false}); }
 function updateLocalTime(){ document.getElementById("localTime").textContent = "現在時刻: " + nowTime(); }
 
-function posLabel(stId){ if(!stId||stId.length<2) return "不明"; const kind=stId[0]; const n=parseInt(stId.slice(1),10); if(isNaN(n)) return "不明"; if(kind==="E") return (idMap[n]||`#${n}`)+"駅構内"; if(kind==="U"){ const a=idMap[n+1]||`#${n+1}`, b=idMap[n]||`#${n}`; return `${a}〜${b}間 上り`; } if(kind==="D"){ const a=idMap[n]||`#${n}`, b=idMap[n-1]||`#${n-1}`; return `${a}〜${b}間 下り`; } return "不明"; }
+function posLabel(stId){ if(stId === "U035") return "笹塚〜幡ヶ谷間 下り";if(!stId||stId.length<2) return "不明"; const kind=stId[0]; const n=parseInt(stId.slice(1),10); if(isNaN(n)) return "不明"; if(kind==="E") return (idMap[n]||`#${n}`)+"駅構内"; if(kind==="U"){ const a=idMap[n+1]||`#${n+1}`, b=idMap[n]||`#${n}`; return `${a}〜${b}間 上り`; } if(kind==="D"){ const a=idMap[n]||`#${n}`, b=idMap[n-1]||`#${n-1}`; return `${a}〜${b}間 下り`; } return "不明"; }
 
 /* --- 新ルール実装 --- */
 
