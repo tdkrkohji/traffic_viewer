@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja" data-version="v0.1.31b">
+<html lang="ja" data-version="v0.1.31c">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — v0.1.31b</title>
+<title>運行中列車 — v0.1.31c</title>
 <style>
 /* 基本スタイル（GitHub風・レスポンシブ） */
 :root{
@@ -570,6 +570,7 @@ function startAutoFetch(ms){
 fetchAndRender();
 
 
+
 /**
  * Toei.txt照合機能（追記版）
  * - ファイル形式: 「列車番号,運用情報」 のCSV形式
@@ -619,7 +620,10 @@ async function appendToeiOperations() {
 const originalFetchAndRender = fetchAndRender;
 fetchAndRender = async function() {
   await originalFetchAndRender();
-  await appendToeiOperation
+  await appendToeiOperations();
+};
+
+/* --- ↑↑↑↑↑ ここまで追記部分 ↑↑↑↑↑ --- */
 </script>
 </body>
 </html>
