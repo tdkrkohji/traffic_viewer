@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja" data-version="v0.1.36">
+<html lang="ja" data-version="v0.1.37">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — v0.1.36</title>
+<title>運行中列車 — v0.1.37</title>
 <style>
 /* 基本スタイル（GitHub風・レスポンシブ） */
 :root{
@@ -52,6 +52,8 @@ tr:hover td{background: rgba(0,0,0,0.03);}
 /* 種別バッジ */
 .badge{padding:4px 6px; border-radius:4px; display:inline-block}
 .tokkyu{background:var(--tokkyu); color:#fff}
+.liner{background:var(--liner); color:#fff}
+.linermt{background:var(--linermt); color:#fff}
 .kyuko{background:var(--kyuko); color:#fff}
 .kaisoku{background:var(--kaisoku); color:#fff}
 .kukan{background:var(--kukan); color:#000}
@@ -586,7 +588,7 @@ async function appendToeiOperationLabels() {
     let currentOperation = "";
 
     for (const line of lines) {
-      if (/^\d+T$/.test(line)) {
+      if (/^\d+[A-Z]$/.test(line)) {
         currentOperation = line;
       } else {
         const ids = line.split(",").map(id => id.trim()).filter(Boolean);
