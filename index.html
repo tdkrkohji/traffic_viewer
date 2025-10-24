@@ -8,12 +8,12 @@
 /* 基本スタイル（GitHub風・レスポンシブ） */
 :root{
   --bg:#f6f8fa; --panel:#ffffff; --muted:#6e7781; --border:#d0d7de; --accent:#0969da;
-  --tokkyu:#FF4C7C; --kyuko:#00B66A; --kaisoku:#0082FF; --kukan:#D8D100; --kakutei:#ced0d4;
+  --tokkyu:#FF4C7C; --kyuko:#00B66A; --kaisoku:#0082FF; --kukan:#D8D100; --kakutei:#ced0d4; --liner:#c71585; --linermt:#32cd32;
   --text:#24292e;
 }
 [data-theme="dark"]{
   --bg:#0d1117; --panel:#0b1117; --muted:#9aa4b2; --border:#30363d; --accent:#58a6ff;
-  --tokkyu:#ff6b6b; --kyuko:#7bd389; --kaisoku:#8cc8ff; --kukan:#ffd86b; --kakutei:#5a5f66;
+  --tokkyu:#ff6b6b; --kyuko:#7bd389; --kaisoku:#8cc8ff; --kukan:#ffd86b; --kakutei:#5a5f66; --liner:#191970; --linermt:#32cd32;
   --text:#c9d1d9;
 }
 html,body{height:100%}
@@ -259,8 +259,8 @@ const syMap = {
   3:{name:"快速", cls:"kaisoku"},
   5:{name:"区間急行", cls:"kukan"},
   6:{name:"各停", cls:"kakutei"},
-  9:{name:"ライナー", cls:"tokkyu"},
-  11:{name:"ライナー", cls:"tokkyu"}
+  9:{name:"ライナー", cls:"liner"},
+  11:{name:"ライナー", cls:"linermt"}
 };
 
 /* 通知永続化 */
