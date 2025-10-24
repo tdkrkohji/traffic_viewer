@@ -277,6 +277,52 @@ function nowTime(){ return new Date().toLocaleTimeString("ja-JP",{hour12:false})
 function updateLocalTime(){ document.getElementById("localTime").textContent = "現在時刻: " + nowTime(); }
 
 function posLabel(stId){ if(!stId||stId.length<2) return "不明"; const kind=stId[0]; const n=parseInt(stId.slice(1),10); if(isNaN(n)) return "不明"; if(kind==="E") return (idMap[n]||`#${n}`)+"駅構内"; if(kind==="U"){ const a=idMap[n+1]||`#${n+1}`, b=idMap[n]||`#${n}`; return `${a}〜${b}間 上り`; } if(kind==="D"){ const a=idMap[n]||`#${n}`, b=idMap[n-1]||`#${n-1}`; return `${a}〜${b}間 下り`; } return "不明"; }
+  /* === 特殊ケース上書きパッチ（追加分） ===
+   目的：特定の st.id（例: "U035"）が来たときだけ、元の posLabel の計算を無視して
+         指定した文字列を返す。その他は元の posLabel をそのまま使う。
+   使い方：specialPosOverrides にキー st.id を追加していけば他の例外も追記できます。
+*/
+
+/* 1) 元の posLabel を別名で保持（この行は必ず posLabel 定義の「直後」に置く） */
+const __orig_posLabel = typeof posLabel === "function" ? posLabel : null;
+
+/* 2) 上書き対象マップ（ここに st.id : 表示文字列 を追加） */
+const specialPosOverrides = {
+  "U035": "笹塚〜幡ヶ谷間 上り"
+  // 追加例: "U016": "仙川〜つつじヶ丘間 上り"
+};
+
+/* 3) posLabel を上書き（元が存在すればフォールバック） */
+function posLabel(stId){
+  // 安全チェック
+  if(typeof stId === "string"){
+    // 直接一致の例外があれば先に返す
+    if(specialPosOverrides.hasOwnProperty(stId)){
+      return specialPosOverrides[stId];
+    }
+  }
+  // 元の実装が保存されていればそれを呼ぶ（最小変更）
+  if(typeof __orig_posLabel === "function"){
+    return __orig_posLabel(stId);
+  }
+  // 万が一元実装が取れなければ既存の簡易処理（保険）
+  if(!stId || stId.length < 2) return "不明";
+  const kind = stId[0];
+  const n = parseInt(stId.slice(1), 10);
+  if(isNaN(n)) return "不明";
+  if(kind === "E") return (idMap[n] || `#${n}`) + "駅構内";
+  if(kind === "U") {
+    const a = idMap[n+1] || `#${n+1}`;
+    const b = idMap[n] || `#${n}`;
+    return `${a}〜${b}間 上り`;
+  }
+  if(kind === "D") {
+    const a = idMap[n] || `#${n}`;
+    const b = idMap[n-1] || `#${n-1}`;
+    return `${a}〜${b}間 下り`;
+  }
+  return "不明";
+}
 
 /* --- 新ルール実装 --- */
 
