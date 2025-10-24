@@ -568,6 +568,87 @@ function startAutoFetch(ms){
 
 /* 初回実行 */
 fetchAndRender();
+<!-- ▼▼▼ この部分を index.html の一番下に追加 ▼▼▼ -->
+<script>
+/* === 運用番号表示機能追加 ===
+   - 外部ファイル toei.txt を読み込み
+   - 列車番号(tr)と照合して運用番号を返す
+   - テーブル描画時に「運用」列を追加して表示
+*/
+
+// ▼ ① 運用データ格納用マップ
+const operationMap = {};
+
+// ▼ ② toei.txt を読み込む関数
+async function loadOperationMap() {
+  try {
+    const res = await fetch("toei.txt");
+    if (!res.ok) throw new Error("toei.txt 読み込み失敗");
+    const text = await res.text();
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+    let currentOp = null;
+    for (const line of lines) {
+      // nT のような行（運用番号の定義）
+      const opMatch = line.match(/^\(?(\d+)T\)?/);
+      if (opMatch) {
+        currentOp = opMatch[1]; // 運用番号 (例: 10T)
+        continue;
+      }
+
+      // 4桁＋任意のA付き列車番号行
+      const trMatch = line.match(/^(\d{4}A?)/);
+      if (trMatch && currentOp) {
+        const tr = trMatch[1];
+        operationMap[tr] = currentOp + "T"; // 例: 4800A → "10T"
+      }
+    }
+    console.log("[toei.txt 読み込み完了]", Object.keys(operationMap).length, "件");
+  } catch (err) {
+    console.error("[toei.txt 読み込みエラー]", err);
+  }
+}
+
+// ▼ ③ 運用番号取得関数
+function getOperationByTrain(trNo) {
+  if (!trNo) return "";
+  return operationMap[trNo] || "";
+}
+
+// ▼ ④ 表描画処理のフック（元の fetchAndRender 内に追記せず外部補強）
+const origRenderFromSection = renderFromSection;
+renderFromSection = function(section) {
+  if (!section) return;
+  origRenderFromSection(section);
+
+  // 各テーブルに「運用」列を付与
+  document.querySelectorAll("table").forEach(table => {
+    const thead = table.tHead.rows[0];
+    if (!thead || thead.querySelector("th[data-key='op']")) return;
+
+    // ヘッダに「運用」列追加
+    const th = document.createElement("th");
+    th.textContent = "運用";
+    th.setAttribute("data-key", "op");
+    thead.insertBefore(th, thead.children[1]); // 列車番号の左に挿入
+
+    // 各行に対応運用を追加
+    Array.from(table.tBodies[0].rows).forEach(row => {
+      const trNo = row.cells[1]?.innerText.trim(); // 2列目が列車番号
+      const op = getOperationByTrain(trNo);
+      const td = document.createElement("td");
+      td.textContent = op || "-";
+      row.insertBefore(td, row.children[1]); // 列車番号の左に挿入
+    });
+  });
+};
+
+// ▼ ⑤ ページロード時に toei.txt を先に読み込み
+document.addEventListener("DOMContentLoaded", () => {
+  loadOperationMap();
+});
+</script>
+<!-- ▲▲▲ ここまで追加 ▲▲▲ -->
 </script>
 </body>
 </html>
