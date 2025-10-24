@@ -326,8 +326,8 @@ function bindSortable(table){
         const headerKey = th.getAttribute("data-key");
         if (headerKey === "pos") {
           // E016, D022 などから数値部分を抽出
-          const numA = parseInt(A.match(/\d+/)?.[0] || "9999", 10);
-          const numB = parseInt(B.match(/\d+/)?.[0] || "9999", 10);
+          const numA = parseInt(A.slice(-3), 10) || 9999;
+          const numB = parseInt(B.slice(-3), 10) || 9999;
           return asc ? numA - numB : numB - numA;
         }
 
