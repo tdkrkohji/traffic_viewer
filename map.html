@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>京王線 ライブ配線図モニター Ver.1.0</title>
+    <title>京王線 ライブ配線図モニター Ver.1.03</title>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
@@ -31,23 +31,23 @@
             display: flex; align-items: center; justify-content: center;
         }
 
-        /* 詳細情報ラベル：1行表示 & 左右切り替え */
+        /* 列車ラベル：1行表示の設定 */
         .train-label {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
             background: rgba(0,0,0,0.85); color: #fff;
-            padding: 2px 6px; border-radius: 4px;
+            padding: 2px 7px; border-radius: 4px;
             font-size: 10px; font-weight: bold; white-space: nowrap;
-            display: flex; flex-direction: row; align-items: center; gap: 5px;
+            display: flex; flex-direction: row; align-items: center; gap: 6px; /* 1行に並べる */
             border: 1px solid #444;
             pointer-events: none;
+            z-index: 110;
         }
 
-        /* 上り：アイコンの右側に表示 */
-        .label-nobori { left: 100%; margin-left: 8px; }
-        /* 下り：アイコンの左側に表示 */
-        .label-kudari { right: 100%; margin-right: 8px; }
+        /* 方向別の位置指定：上りは右、下りは左 */
+        .label-nobori { left: 100%; margin-left: 8px; }  /* アイコンの右側 */
+        .label-kudari { right: 100%; margin-right: 8px; } /* アイコンの左側 */
 
         .delay-text { color: #ff4444; font-weight: 900; }
         .car-model { color: #00ffcc; font-size: 9px; }
@@ -79,7 +79,7 @@
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
-// 【最新提供座標データ：漏れなく反映】
+// 【最新提供座標データ：提供されたリストを完全反映】
 const posCoords = {
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
@@ -177,8 +177,8 @@ async function update() {
                     const unyo = unyoMap[p.tr] || "--";
                     const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
 
-                    // 【変更箇所】方向(p.ki)によってクラスを切り替え
-                    const dirClass = (p.ki === "1") ? "label-nobori" : "label-kudari";
+                    // 方向判定：p.ki が "1" なら上り（右表示）、それ以外は下り（左表示）
+                    const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
 
                     el.innerHTML = `
                         <div class="train-label ${dirClass}">
