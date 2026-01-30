@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>京王線 ライブ配線図モニター Ver.1.3</title>
+    <title>京王線 ライブ配線図モニター Ver.1.5</title>
     <script src="unyo_kt.js"></script>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
@@ -14,6 +14,7 @@
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
         .train { position: absolute; width: 26px; height: 16px; border-radius: 2px; border: 1.5px solid #fff; transform: translate(-50%, -50%); z-index: 100; transition: all 1.5s; box-shadow: 0 0 10px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; }
         .train-label { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; display: flex; flex-direction: row; align-items: center; gap: 5px; border: 1px solid #444; pointer-events: none; z-index: 110; }
+        /* 左右逆（上り左、下り右）の設定 */
         .label-nobori { right: 100%; margin-right: 8px; }
         .label-kudari { left: 100%; margin-left: 8px; }
         .delay-text { color: #ff4444; font-weight: 900; }
@@ -43,7 +44,7 @@
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
-// 座標設定 (E008_10 はそのまま維持)
+// 正しい座標設定（E008_10 維持）
 const posCoords = {
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
@@ -89,30 +90,29 @@ function getDestName(ik) {
     return destMap[String(ik)] || ik;
 }
 
-// 運用データ(data)から逆引きする関数
+// 【安全設計】jsが壊れていても他を止めない運用検索
 function getUnyoFromJS(trNo) {
-    // dataが未定義（読み込み失敗）の場合は即終了
-    if (typeof data === 'undefined') return "ERROR";
-    
-    const targetTr = String(trNo).trim();
-    for (const [unyoName, trainList] of Object.entries(data)) {
-        if (trainList.includes(targetTr)) {
-            return unyoName;
+    try {
+        if (typeof data !== 'undefined' && data !== null) {
+            const targetTr = String(trNo).trim();
+            for (const [unyoName, trainList] of Object.entries(data)) {
+                if (Array.isArray(trainList) && trainList.includes(targetTr)) {
+                    return unyoName;
+                }
+            }
         }
+    } catch (e) {
+        // エラーを無視して続行
     }
     return "--";
 }
 
 async function update() {
-    // data変数が読み込まれるまで待機
-    if (typeof data === 'undefined') {
-        document.getElementById('status').textContent = "運用データ読込中...";
-        return;
-    }
-
     try {
         const res = await fetch(FEED_URL + "?" + Date.now());
+        if (!res.ok) throw new Error();
         const json = await res.json();
+        
         const layer = document.getElementById('trainLayer');
         const activeIds = new Set();
         const allTrains = [...(json.TS || []), ...(json.TB || [])];
@@ -121,6 +121,7 @@ async function update() {
         allTrains.forEach(st => {
             (st.ps || []).forEach(p => {
                 if (!p.tr) return;
+                
                 const key = p.bs ? `${st.id}_${p.bs}` : st.id;
                 const base = posCoords[key] || posCoords[st.id];
 
@@ -143,14 +144,10 @@ async function update() {
                     el.style.top = `${base.y}px`;
 
                     const model = getCarModel(p.sk);
-                    // ★ここが肝：dataから直接運用を探す
-                    const unyo = getUnyoFromJS(p.tr);
-                    
+                    const unyo = getUnyoFromJS(p.tr); 
                     const dest = getDestName(p.ik_tr);
                     const sr = p.sr ? `${p.sr}両` : "";
                     const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
-
-                    // 方向：1=上り(左表示), その他=下り(右表示)
                     const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
 
                     el.innerHTML = `
@@ -170,12 +167,14 @@ async function update() {
             if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
         });
         document.getElementById('status').textContent = "最終更新: " + new Date().toLocaleTimeString();
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        document.getElementById('status').textContent = "データ更新エラー";
+    }
 }
 
-// 実行タイミングの調整：2秒ごとに更新
-setInterval(update, 2000);
+// 初回実行と2秒ごとのループ
 update();
+setInterval(update, 2000);
 </script>
 </body>
 </html>
