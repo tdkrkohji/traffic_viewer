@@ -5,14 +5,14 @@
     <title>京王線 ライブ配線図モニター 完全版</title>
     <script src="unyo_kt.js"></script>
     <style>
-        :root { --bg: #0f0f0f; --accent: #58a6ff; }
+        :root { --bg: #0f0f0f; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: sans-serif; overflow: hidden; }
         header { height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9); display: flex; align-items: center; border-bottom: 1px solid #333; position: fixed; top: 0; width: 100%; z-index: 1000; }
         .map-wrapper { position: absolute; top: 50px; bottom: 0; left: 0; right: 0; overflow: auto; background: #000; }
         .map-content { position: relative; width: 1200px; height: 675px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; pointer-events: none; }
         .train { position: absolute; width: 26px; height: 16px; border-radius: 2px; border: 1.5px solid #fff; transform: translate(-50%, -50%); z-index: 100; transition: all 1.5s linear; box-shadow: 0 0 10px #000; display: flex; align-items: center; justify-content: center; }
-        .train-label { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; display: flex; align-items: center; gap: 5px; border: 1px solid #444; pointer-events: none; z-index: 110; }
+        .train-label { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; display: flex; align-items: center; gap: 5px; border: 1px solid #444; pointer-events: none; }
         .label-nobori { right: 100%; margin-right: 8px; }
         .label-kudari { left: 100%; margin-left: 8px; }
         .unyo-no { color: #ffeb3b; }
@@ -25,7 +25,7 @@
 <body>
 
 <header>
-    <h1 style="font-size:14px; margin:0;">京王線 リアルタイム配線図 (新宿-明大前)</h1>
+    <h1 style="font-size:14px; margin:0;">京王線 運用モニター (新宿-明大前)</h1>
     <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">読込中...</div>
 </header>
 
@@ -37,9 +37,8 @@
 </div>
 
 <script>
-// --- 【全座標リスト】一字一句漏らさず記述 ---
+// --- 1. 全座標リスト (45箇所) ---
 const posCoords = {
-    // 新宿・新線新宿エリア
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
     "E002_1": {x: 680, y: 65},  "E002_2": {x: 680, y: 91},  "E002_3S": {x: 680, y: 120}, "E002_4": {x: 680, y: 146},
@@ -53,7 +52,6 @@ const posCoords = {
     "E003_1": {x: 893, y: 91},  "E003_2": {x: 893, y: 120},
     "D004":   {x: 976, y: 91},  "U003":   {x: 976, y: 120},
     "E004_1": {x: 1053, y: 91}, "E004_2": {x: 1053, y: 120},
-    // 笹塚・代田橋・明大前エリア
     "D005":   {x: 55,  y: 322}, "U004":   {x: 1145, y: 120},
     "E005_1": {x: 145, y: 322}, "E005_2": {x: 145, y: 351},
     "D006":   {x: 230, y: 322}, "U005":   {x: 230, y: 351},
@@ -70,24 +68,25 @@ const posCoords = {
     "E011_1": {x: 1122, y: 322}, "E011_2": {x: 1122, y: 351}
 };
 
-const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
+// --- 2. 行き先リスト (全コード復元) ---
+function getDestName(ik) {
+    const d = { 
+        "001":"新", "033":"N", "002":"笹", "003":"明", "006":"桜", "010":"烏", "012":"つ", "016":"調", 
+        "018":"飛", "021":"東", "022":"府", "027":"高", "031":"北", "032":"八", "036":"馬", "037":"動", 
+        "042":"尾", "043":"山", "048":"若", "050":"セ", "052":"沢", "054":"橋", "101":"市", "107":"岩", 
+        "112":"住", "114":"島", "118":"瑞", "120":"本" 
+    };
+    return d[String(ik)] || ik;
+}
 
 function getCarModel(sk) {
     const m = { "2":"2000", "5":"5000", "7":"7000", "8":"8000", "9":"9000", "0":"10-300" };
     return m[String(sk)] || "";
 }
 
-function getDestName(ik) {
-    const d = { "001":"新", "033":"N", "002":"笹", "003":"明", "006":"桜", "010":"烏", "032":"八", "054":"橋" };
-    return d[String(ik)] || ik;
-}
-
-// 運用を取得する確実な関数
 function getUnyo(tr) {
     const trStr = String(tr);
-    // window.trToUnyoを優先的に見る
     if (window.trToUnyo && window.trToUnyo[trStr]) return window.trToUnyo[trStr];
-    // window.unyoDataをスキャン（保険）
     if (window.unyoData) {
         for (const [u, list] of Object.entries(window.unyoData)) {
             if (list.includes(trStr)) return u;
@@ -98,14 +97,14 @@ function getUnyo(tr) {
 
 async function update() {
     try {
-        const res = await fetch(FEED_URL + "?" + Date.now());
+        const res = await fetch("https://i.opentidkeio.jp/data/traffic_info.json?" + Date.now());
         const json = await res.json();
         const layer = document.getElementById('trainLayer');
         const activeIds = new Set();
-        const allTrains = [...(json.TS || []), ...(json.TB || [])];
+        const all = [...(json.TS || []), ...(json.TB || [])];
         const counter = {};
 
-        allTrains.forEach(st => {
+        all.forEach(st => {
             (st.ps || []).forEach(p => {
                 if (!p.tr) return;
                 const key = p.bs ? `${st.id}_${p.bs}` : st.id;
@@ -129,12 +128,10 @@ async function update() {
                     el.style.top = pos.y + "px";
 
                     const dir = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
-                    const unyo = getUnyo(p.tr);
-                    
                     el.innerHTML = `
                         <div class="train-label ${dir}">
                             <span class="car-model">${getCarModel(p.sk)}</span>
-                            <span class="unyo-no">${unyo}</span>
+                            <span class="unyo-no">${getUnyo(p.tr)}</span>
                             <span class="dest-text">${getDestName(p.ik_tr)}</span>
                             <span>${p.tr}</span>
                         </div>`;
