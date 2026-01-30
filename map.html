@@ -3,99 +3,75 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>ライブ配線図 — 新宿〜明大前</title>
+    <title>ライブ配線図モニター — v0.1.65</title>
     <style>
-        :root {
-            --bg: #1a1a1a;
-            --rail: #ffffff;
-            --shinsen-rail: #aaaaaa; /* 新線は少し色を変えて区別 */
-            --accent: #58a6ff;
-        }
+        :root { --bg: #1a1a1a; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: sans-serif; overflow: hidden; }
         
         header {
-            height: 50px; padding: 0 15px; background: rgba(0,0,0,0.8);
+            height: 50px; padding: 0 15px; background: rgba(0,0,0,0.85);
             display: flex; align-items: center; border-bottom: 1px solid #444;
             position: fixed; top: 0; width: 100%; z-index: 1000;
         }
-        
+
         .map-wrapper {
             position: absolute; top: 50px; bottom: 0; left: 0; right: 0;
-            overflow: auto; -webkit-overflow-scrolling: touch; background: #000;
+            overflow: auto; -webkit-overflow-scrolling: touch;
+            background: #000;
         }
 
-        .canvas {
+        /* 画像サイズ 1200x675 に厳密に合わせる */
+        .map-content {
             position: relative;
-            width: 1400px; /* 明大前まで収まる幅 */
-            height: 600px;
-            padding: 50px;
+            width: 1200px;
+            height: 675px; 
         }
 
-        /* 線路描画 */
-        .rail { position: absolute; height: 2px; background: var(--rail); }
-        .rail.shinsen { background: var(--shinsen-rail); }
-        
-        /* 渡り線（斜め） */
-        .diagonal {
-            position: absolute; width: 40px; height: 2px; background: var(--rail);
-            transform-origin: left center;
+        .map-img {
+            position: absolute; top: 0; left: 0;
+            width: 1200px; height: 675px;
+            display: block;
         }
-
-        /* 駅ホーム */
-        .platform {
-            position: absolute; background: #fff; height: 10px; width: 100px;
-            border: 1px solid #666; z-index: 5;
-        }
-        .st-name { position: absolute; font-size: 14px; font-weight: bold; color: #888; }
 
         /* 列車アイコン */
         .train {
-            position: absolute; width: 28px; height: 18px;
-            border-radius: 3px; border: 1px solid #fff;
-            transform: translate(-50%, -50%); z-index: 100;
-            transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute;
+            width: 22px; height: 16px;
+            border-radius: 3px; border: 1.5px solid #fff;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 8px rgba(0,0,0,0.8);
             display: flex; align-items: center; justify-content: center;
-            font-size: 10px; font-weight: bold; color: #000;
-            box-shadow: 0 0 8px rgba(255,255,255,0.3);
         }
-        .train-label { position: absolute; top: -18px; color: #fff; font-size: 10px; background: rgba(0,0,0,0.7); padding: 1px 4px; border-radius: 2px; }
 
-        /* 各パーツの配置 */
-        /* 本線新宿 1-3番線 */
-        .pl-keio-shinjuku { left: 100px; width: 120px; }
-        /* 新線新宿 4-5番線 */
-        .pl-shinsen-shinjuku { left: 100px; width: 120px; background: #ddd; }
-        
-        /* 笹塚付近の分岐描画用（簡易版） */
-        .junction-sasa { left: 450px; top: 200px; width: 100px; height: 100px; }
+        .train-label {
+            position: absolute; top: -18px;
+            background: rgba(0,0,0,0.8); color: #fff;
+            padding: 1px 4px; border-radius: 3px;
+            font-size: 10px; font-weight: bold; white-space: nowrap;
+        }
 
+        /* 種別カラー（京王標準） */
+        .sy-1 { background-color: #ff4c7c; } /* 特急 */
+        .sy-2 { background-color: #00b66a; } /* 急行 */
+        .sy-3 { background-color: #0082ff; } /* 快速 */
+        .sy-5 { background-color: #d8d100; color: #000; } /* 区急 */
+        .sy-6 { background-color: #888; }    /* 各停 */
+        .sy-9, .sy-11 { background-color: #c71585; } /* ライナー */
     </style>
 </head>
 <body>
 
 <header>
     <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:14px;">← 一覧に戻る</a>
-    <h1 style="font-size:16px; margin:0;">ライブ配線図：新宿 — 明大前</h1>
-    <div id="clock" style="margin-left:auto; font-size:12px; color:#aaa;"></div>
+    <h1 style="font-size:15px; margin:0;">京王線 リアルタイム配線図 (新宿-明大前)</h1>
+    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">接続中...</div>
 </header>
 
 <div class="map-wrapper">
-    <div class="canvas" id="mapCanvas">
-        <div class="st-name" style="top:120px; left:110px;">新宿 (本線/新線)</div>
-        <div class="st-name" style="top:120px; left:350px;">初台/幡ヶ谷</div>
-        <div class="st-name" style="top:120px; left:600px;">笹塚</div>
-        <div class="st-name" style="top:120px; left:850px;">代田橋</div>
-        <div class="st-name" style="top:120px; left:1100px;">明大前</div>
-
-        <div class="rail" style="top:250px; left:0; width:1300px;"></div>
-        <div class="rail" style="top:290px; left:0; width:1300px;"></div>
-        
-        <div class="rail shinsen" style="top:180px; left:0; width:600px;"></div>
-        <div class="rail shinsen" style="top:210px; left:0; width:600px;"></div>
-
-        <div class="platform pl-keio-shinjuku" style="top:244px;"></div> <div class="platform pl-keio-shinjuku" style="top:284px;"></div> <div class="platform pl-shinsen-shinjuku" style="top:174px;"></div> <div class="platform pl-shinsen-shinjuku" style="top:204px;"></div> <div class="platform" style="top:244px; left:600px;"></div> <div class="platform" style="top:284px; left:600px;"></div>
-        <div class="platform" style="top:244px; left:1100px;"></div> <div class="platform" style="top:284px; left:1100px;"></div>
-
+    <div class="map-content" id="mapContent">
+        <img src="image.png" class="map-img" alt="Railway Map">
         <div id="trainLayer"></div>
     </div>
 </div>
@@ -103,43 +79,40 @@
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
-// 実装範囲の座標マップ
+// 1200x675用にいただいた最新座標
 const posCoords = {
-    // 本線新宿
-    "E001_1": { x: 160, y: 250 }, "E001_2": { x: 160, y: 250 }, "E001_3": { x: 160, y: 290 },
-    // 新線新宿
-    "E033_4": { x: 160, y: 180 }, "E033_5": { x: 160, y: 210 },
-    // 初台・幡ヶ谷 (新線)
-    "E034": { x: 350, y: 180 }, "D034": { x: 300, y: 180 },
-    "E035": { x: 450, y: 180 }, "D035": { x: 400, y: 180 },
-    // 笹塚 (E002)
-    "E002_1": { x: 650, y: 250 }, "E002_2": { x: 650, y: 290 },
-    "D002":   { x: 550, y: 250 },
-    // 代田橋
-    "E003": { x: 900, y: 250 }, "D003": { x: 850, y: 250 },
-    // 明大前
-    "E004": { x: 1150, y: 250 }, "D004": { x: 1100, y: 250 }
+    "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
+    "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
+    "E002_1": {x: 680, y: 65},  "E002_2": {x: 680, y: 91}, "E002_3": {x: 680, y: 120}, "E002_4": {x: 680, y: 146},
+    "E033_4": {x: 149, y: 91},  "E033_5": {x: 149, y: 119},
+    "D034":   {x: 295, y: 91},  "U033":   {x: 295, y: 120},
+    "E034_1": {x: 367, y: 91},  "E034_2": {x: 367, y: 120},
+    "D035":   {x: 430, y: 91},  "U034":   {x: 430, y: 120},
+    "E035_1": {x: 490, y: 91},  "E035_2": {x: 490, y: 120},
+    "S002":   {x: 600, y: 65},  "U035":   {x: 600, y: 145},
+    "D003":   {x: 785, y: 65},  "U002":   {x: 785, y: 146},
+    "E003_1": {x: 893, y: 91},  "E003_2": {x: 893, y: 120},
+    "D004":   {x: 976, y: 91},  "U003":   {x: 976, y: 120},
+    "E004_1": {x: 1053, y: 91}, "E004_2": {x: 1053, y: 120}
 };
-
-const syColor = { 1: "#ff4c7c", 2: "#00b66a", 3: "#0082ff", 6: "#ced0d4" };
 
 async function update() {
     try {
         const res = await fetch(FEED_URL + "?" + Date.now());
         const data = await res.json();
         const layer = document.getElementById('trainLayer');
-        
-        // IDを保持して更新
-        const activeTrains = new Set();
+        const activeIds = new Set();
+        const allTrains = [...(data.TS || []), ...(data.TB || [])];
 
-        [...(data.TS || []), ...(data.TB || [])].forEach(st => {
+        allTrains.forEach(st => {
             (st.ps || []).forEach(p => {
                 if (!p.tr) return;
+                // 番線がある場合は ID_番線、ない場合は ID で検索
                 const key = p.bs ? `${st.id}_${p.bs}` : st.id;
-                const pos = posCoords[key] || posCoords[st.id];
+                const coords = posCoords[key] || posCoords[st.id];
 
-                if (pos) {
-                    activeTrains.add(p.tr);
+                if (coords) {
+                    activeIds.add(p.tr);
                     let el = document.getElementById(`tr-${p.tr}`);
                     if (!el) {
                         el = document.createElement('div');
@@ -147,23 +120,27 @@ async function update() {
                         el.className = 'train';
                         layer.appendChild(el);
                     }
-                    el.style.backgroundColor = syColor[p.sy] || "#555";
-                    el.style.left = pos.x + "px";
-                    el.style.top = pos.y + "px";
+                    // 種別に応じた色分け
+                    el.className = `train sy-${p.sy || '6'}`;
+                    el.style.left = `${coords.x}px`;
+                    el.style.top = `${coords.y}px`;
                     el.innerHTML = `<div class="train-label">${p.tr}</div>`;
                 }
             });
         });
 
-        // 消えた列車を削除
+        // データから消えた列車を画面から削除
         document.querySelectorAll('.train').forEach(el => {
-            if (!activeTrains.has(el.id.replace('tr-', ''))) el.remove();
+            if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
         });
-
-        document.getElementById('clock').textContent = "最終更新: " + new Date().toLocaleTimeString();
-    } catch (e) { console.error(e); }
+        document.getElementById('status').textContent = "更新: " + new Date().toLocaleTimeString();
+    } catch (e) {
+        console.error(e);
+        document.getElementById('status').textContent = "接続エラー";
+    }
 }
 
+// 20秒ごとに更新（少し頻度を上げました）
 setInterval(update, 20000);
 update();
 </script>
