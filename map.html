@@ -3,212 +3,130 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>ライブ配線図 — 京王線</title>
+    <title>ライブ配線図 (CSS描画版)</title>
     <style>
         :root {
             --bg: #0d1117;
-            --text: #e6edf3;
+            --line: #ffffff;
+            --station-bg: rgba(255, 255, 255, 0.1);
             --accent: #58a6ff;
         }
         body {
-            margin: 0;
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: sans-serif;
-            overflow: hidden; /* スクロールはコンテナで行う */
+            margin: 0; background: var(--bg); color: #fff;
+            font-family: sans-serif; overflow-x: hidden;
         }
-        /* ヘッダー */
         header {
-            position: fixed;
-            top: 0;
-            width: 100%;
-            height: 50px;
-            background: rgba(13, 17, 23, 0.9);
-            display: flex;
-            align-items: center;
-            padding: 0 15px;
-            z-index: 100;
-            border-bottom: 1px solid #30363d;
+            padding: 10px; background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; border-bottom: 1px solid #333;
         }
-        h1 { font-size: 16px; margin: 0; flex-grow: 1; }
-        #status { font-size: 12px; color: #8b949e; }
-
-        /* マップ表示エリア */
-        .map-wrapper {
-            position: absolute;
-            top: 50px;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            overflow: auto; /* スマホで縦横スクロール可能に */
-            -webkit-overflow-scrolling: touch;
-        }
-        .map-content {
+        /* 線路を描画するエリア */
+        .railway-map {
             position: relative;
-            /* 座標の最大値に合わせてサイズを固定 */
-            width: 4000px; 
-            height: 1080px; 
+            width: 100%;
+            height: 400px; /* 必要に応じて調整 */
+            margin-top: 20px;
+            background: #000;
+            overflow-x: auto;
+            border-top: 1px solid #333; border-bottom: 1px solid #333;
         }
-        .map-img {
+        .canvas {
+            position: relative;
+            width: 1200px; /* 描画の基準幅 */
+            height: 100%;
+        }
+        /* 線路（CSSで引く） */
+        .track {
             position: absolute;
-            top: 0;
-            left: 0;
-            display: block;
+            height: 2px; background: var(--line);
+            width: 100%;
+        }
+        .station-box {
+            position: absolute;
+            background: var(--station-bg);
+            border: 1px solid #555;
+            color: #ccc; font-size: 10px;
+            display: flex; align-items: center; justify-content: center;
         }
 
         /* 列車アイコン */
         .train {
             position: absolute;
-            width: 18px;
-            height: 18px;
-            border-radius: 4px;
-            border: 2px solid #fff;
+            width: 20px; height: 14px;
+            background: #f06; border-radius: 2px;
+            border: 1px solid #fff;
             transform: translate(-50%, -50%);
-            z-index: 10;
-            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            z-index: 100; transition: all 1s ease;
         }
-        .train::after {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border-radius: 2px;
-            background: inherit;
-            opacity: 0.4;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.4; }
-            70% { transform: scale(2); opacity: 0; }
-            100% { transform: scale(1); opacity: 0; }
-        }
-        .train-no {
-            position: absolute;
-            top: -22px;
-            background: rgba(0, 0, 0, 0.75);
-            color: #fff;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-            white-space: nowrap;
-            pointer-events: none;
+        .train-label {
+            position: absolute; top: -18px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px; background: #000; padding: 1px 3px;
         }
 
-        /* 種別カラー */
-        .sy-tokkyu { background-color: #ff4c7c; }
-        .sy-kyuko { background-color: #00b66a; }
-        .sy-kaisoku { background-color: #0082ff; }
-        .sy-kukan { background-color: #d8d100; color: #000; }
-        .sy-kakutei { background-color: #ced0d4; color: #000; }
-        .sy-liner { background-color: #c71585; }
+        /* 各駅・線路の具体的な位置設定 */
+        /* 例: 本線 */
+        .track.honsen-up { top: 150px; left: 0; width: 100%; }
+        .track.honsen-down { top: 180px; left: 0; width: 100%; }
+        /* 例: 新線 */
+        .track.shinsen-up { top: 100px; left: 0; width: 300px; }
+        
+        /* 駅ラベル */
+        .st-name { position: absolute; font-size: 12px; color: #aaa; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>京王線 リアルタイム配線図</h1>
-    <div id="status">更新中...</div>
+    <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px;">← 戻る</a>
+    <h1 style="font-size:16px; margin:0;">京王線 配線図モニター</h1>
 </header>
 
-<div class="map-wrapper">
-    <div class="map-content" id="mapContent">
-        <img src="image.png" class="map-img" alt="配線図">
+<div class="railway-map">
+    <div class="canvas" id="mapCanvas">
+        <div class="track honsen-up"></div>
+        <div class="track honsen-down"></div>
+        
+        <div class="st-name" style="top:130px; left:50px;">新宿</div>
+        <div class="station-box" style="top:145px; left:40px; width:60px; height:12px;">1・2番線</div>
+        
+        <div class="st-name" style="top:130px; left:300px;">笹塚</div>
+        
         </div>
 </div>
 
 <script>
-const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
-
-// いただいた座標データ
-const posCoords = {
-  "E001_1": {x: 503, y: 458}, "E001_2": {x: 503, y: 557}, "E001_3": {x: 503, y: 655},
-  "D002": {x: 1250, y: 557}, "E002_1": {x: 2325, y: 220}, "D003": {x: 2650, y: 220},
-  "E003": {x: 3050, y: 312}, "D004": {x: 3326, y: 312}, "E004": {x: 3600, y: 312},
-  "E033_4": {x: 503, y: 308}, "E033_5": {x: 503, y: 407}, "D034": {x: 900, y: 308},
-  "E034": {x: 1250, y: 308}, "D035": {x: 1460, y: 308}, "E035": {x: 1673, y: 315},
-  "S002": {x: 2060, y: 308}, "E002_2": {x: 2325, y: 315}
+// 座標を「ピクセル」ではなく「画面に対する％」や「独自グリッド」で管理可能
+const posMap = {
+    "E001_1": { x: 70, y: 151 },
+    "E001_2": { x: 70, y: 181 },
+    "E002":   { x: 300, y: 151 },
+    // いただいた座標を、このCSSのスケールに合わせて変換して登録
 };
 
-const syClass = { 1:"sy-tokkyu", 2:"sy-kyuko", 3:"sy-kaisoku", 5:"sy-kukan", 6:"sy-kakutei", 9:"sy-liner", 11:"sy-liner" };
-
-async function fetchToei() {
-    let map = {};
-    try {
-        const res = await fetch("toei.txt");
-        if (res.ok) {
-            const text = await res.text();
-            let current = "";
-            text.split("\n").forEach(l => {
-                l = l.trim();
-                if (/^\d+[A-Z]$/.test(l)) current = l;
-                else if (l) l.split(",").forEach(t => map[t.trim()] = current);
-            });
-        }
-    } catch(e) {}
-    return map;
-}
-
 async function update() {
-    try {
-        const unyoMap = await fetchToei();
-        const res = await fetch(FEED_URL + "?" + Date.now());
-        const data = await res.json();
-        const container = document.getElementById('mapContent');
-        
-        // 既存の列車を取得（更新用）
-        const currentTrains = document.querySelectorAll('.train');
-        const activeIds = new Set();
+    const res = await fetch("https://i.opentidkeio.jp/data/traffic_info.json?" + Date.now());
+    const data = await res.json();
+    const canvas = document.getElementById('mapCanvas');
+    
+    document.querySelectorAll('.train').forEach(e => e.remove());
 
-        [...(data.TS || []), ...(data.TB || [])].forEach(st => {
-            (st.ps || []).forEach(p => {
-                if (!p.tr) return;
-                
-                const coordKey = p.bs ? `${st.id}_${p.bs}` : st.id;
-                const coords = posCoords[coordKey] || posCoords[st.id];
-
-                if (coords) {
-                    activeIds.add(p.tr);
-                    let el = document.getElementById(`tr-${p.tr}`);
-                    
-                    if (!el) {
-                        el = document.createElement('div');
-                        el.id = `tr-${p.tr}`;
-                        el.className = `train ${syClass[p.sy] || ''}`;
-                        container.appendChild(el);
-                    }
-
-                    // 運用番号があれば付与
-                    const unyo = unyoMap[p.tr] ? `${unyoMap[p.tr]} ` : "";
-                    el.innerHTML = `<div class="train-no">${unyo}${p.tr}</div>`;
-                    
-                    // 位置更新
-                    el.style.left = `${coords.x}px`;
-                    el.style.top = `${coords.y}px`;
-                }
-            });
+    [...(data.TS || []), ...(data.TB || [])].forEach(st => {
+        (st.ps || []).forEach(p => {
+            const key = p.bs ? `${st.id}_${p.bs}` : st.id;
+            const pos = posMap[key];
+            if(pos) {
+                const tr = document.createElement('div');
+                tr.className = 'train';
+                tr.style.left = pos.x + "px";
+                tr.style.top = pos.y + "px";
+                tr.innerHTML = `<div class="train-label">${p.tr}</div>`;
+                canvas.appendChild(tr);
+            }
         });
-
-        // 画面外（データから消えた）列車を削除
-        currentTrains.forEach(el => {
-            if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
-        });
-
-        document.getElementById('status').textContent = `最終更新: ${new Date().toLocaleTimeString()}`;
-    } catch (e) {
-        console.error(e);
-        document.getElementById('status').textContent = "接続エラー";
-    }
+    });
 }
-
-// 30秒ごとに更新
 setInterval(update, 30000);
 update();
 </script>
-
 </body>
 </html>
