@@ -52,16 +52,8 @@ const unyoData = {
   "91K": ["6117","5108","5867","5866","2817","2832","4869","4876","5853A","5848A","4813A"]
 };
 
-// ===============================
-// 逆引きテーブル生成
-// ===============================
-
+// 逆引きテーブルをグローバルに作成
 window.trToUnyo = {};
-window.trToNext = {};
-
-for (const [unyo, list] of Object.entries(unyoData)) {
-  list.forEach((tr, i) => {
-    window.trToUnyo[String(tr)] = unyo;
-    window.trToNext[String(tr)] = list[i + 1] ?? null;
-  });
+for (const [unyo, list] of Object.entries(window.unyoData)) {
+  list.forEach(tr => { window.trToUnyo[String(tr)] = unyo; });
 }
