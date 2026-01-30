@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>京王線 ライブ配線図モニター Ver.1.0</title>
+    <title>京王線 ライブ配線図モニター Ver.1.1</title>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
@@ -19,11 +19,11 @@
             overflow: auto; -webkit-overflow-scrolling: touch; background: #000;
         }
 
-        /* 1200x675固定 */
+        /* 1200x675固定サイズ */
         .map-content { position: relative; width: 1200px; height: 675px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
 
-        /* 列車アイコン本体 */
+        /* 列車アイコン */
         .train {
             position: absolute; width: 26px; height: 16px;
             border-radius: 2px; border: 1.5px solid #fff;
@@ -33,7 +33,7 @@
             display: flex; align-items: center; justify-content: center;
         }
 
-        /* 詳細情報ラベル */
+        /* 詳細情報ラベル (白文字統一) */
         .train-label {
             position: absolute; top: -38px;
             background: rgba(0,0,0,0.85); color: #fff;
@@ -44,10 +44,8 @@
             pointer-events: none;
         }
 
-        .label-row { display: flex; gap: 6px; align-items: center; }
-        .delay-text { color: #ff4444; font-weight: 900; } /* 遅れは赤 */
-        .car-model { color: #00ffcc; font-size: 9px; }
-        .unyo-no { color: #ffeb3b; } /* 運用番号(1T/81Kなど)は目立つ黄色 */
+        .label-row { display: flex; gap: 6px; align-items: center; color: #fff; }
+        .delay-text { color: #ff4444; font-weight: 900; } /* 遅れのみ赤 */
 
         /* 種別カラー設定 */
         .sy-1 { background-color: #ff4c7c; } /* 特急 */
@@ -61,9 +59,9 @@
 <body>
 
 <header>
-    <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧に戻る</a>
-    <h1 style="font-size:14px; margin:0;">京王線 リアルタイム配線図 (新宿-明大前)</h1>
-    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">接続中...</div>
+    <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧</a>
+    <h1 style="font-size:14px; margin:0;">京王線 ライブ配線図 (新宿-明大前)</h1>
+    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">運用データ読込中...</div>
 </header>
 
 <div class="map-wrapper">
@@ -75,8 +73,9 @@
 
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
+let unyoMap = {}; // 運用情報を保持するグローバル変数
 
-// 修正された正確な座標リスト
+// 座標リスト (1200x675)
 const posCoords = {
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
@@ -93,53 +92,51 @@ const posCoords = {
     "E004_1": {x: 1053, y: 91}, "E004_2": {x: 1053, y: 120}
 };
 
-// sk(車両区分)による形式名変換
+// sk(車両区分)判定
 function getCarModel(sk) {
-    const models = { "2":"2000系", "5":"5000系", "7":"7000系", "8":"8000系", "9":"9000系", "0":"10-300形" };
+    const models = { "2":"2000", "5":"5000", "7":"7000", "8":"8000", "9":"9000", "0":"10-300" };
     return models[String(sk)] || "";
 }
 
-// toei.txtの解析 (運用番号[TK]の次行に列車番号がある形式に対応)
-async function fetchUnyo() {
-    let map = {};
+// toei.txt 読込関数
+async function loadUnyoData() {
     try {
         const res = await fetch("toei.txt?" + Date.now());
-        if (!res.ok) return map;
+        if (!res.ok) throw new Error("toei.txt not found");
         const text = await res.text();
         const lines = text.split(/\r?\n/);
         let currentUnyo = "";
-
-        for (let line of lines) {
+        
+        unyoMap = {}; // クリア
+        lines.forEach(line => {
             line = line.trim();
-            if (!line) continue;
-            // 運用番号の行 (例: 81K)
+            if (!line) return;
+            // 運用番号 (数字+T/K)
             if (/^\d+[TK]$/.test(line)) {
                 currentUnyo = line;
-            } 
-            // 列車番号リストの行 (例: 2720, ...)
-            else if (currentUnyo) {
+            } else if (currentUnyo) {
                 line.split(',').forEach(tr => {
                     const cleanTr = tr.trim();
-                    if (cleanTr) map[cleanTr] = currentUnyo;
+                    if (cleanTr) unyoMap[cleanTr] = currentUnyo;
                 });
             }
-        }
-    } catch(e) { console.error("Unyo fetch error:", e); }
-    return map;
+        });
+        console.log("Unyo data loaded:", Object.keys(unyoMap).length);
+    } catch (e) {
+        console.error("Unyo load failed:", e);
+    }
 }
 
 async function update() {
     try {
-        const unyoMap = await fetchUnyo();
         const res = await fetch(FEED_URL + "?" + Date.now());
         const data = await res.json();
-        
         const layer = document.getElementById('trainLayer');
         const activeIds = new Set();
-        const allTrains = [...(data.TS || []), ...(data.TB || [])];
-        const posCounter = {}; // 重複検知用
+        const all = [...(data.TS || []), ...(data.TB || [])];
+        const posCounter = {};
 
-        allTrains.forEach(st => {
+        all.forEach(st => {
             (st.ps || []).forEach(p => {
                 if (!p.tr) return;
                 const key = p.bs ? `${st.id}_${p.bs}` : st.id;
@@ -148,7 +145,7 @@ async function update() {
                 if (base) {
                     activeIds.add(p.tr);
                     
-                    // 重複回避ロジック: 同一座標なら右に10pxずつずらす
+                    // 重複回避ロジック
                     const cKey = `${base.x}_${base.y}`;
                     const offset = (posCounter[cKey] || 0) * 10;
                     posCounter[cKey] = (posCounter[cKey] || 0) + 1;
@@ -171,24 +168,28 @@ async function update() {
 
                     el.innerHTML = `
                         <div class="train-label">
-                            <div class="label-row"><span class="car-model">${model}</span><span class="unyo-no">${unyo}</span></div>
+                            <div class="label-row"><span>${model}</span><span>${unyo}</span></div>
                             <div class="label-row"><span>${p.tr}</span>${delayHtml}</div>
                         </div>`;
                 }
             });
         });
 
-        // データから消えた列車を削除
+        // 不要な列車を削除
         document.querySelectorAll('.train').forEach(el => {
             if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
         });
-        document.getElementById('status').textContent = "最終更新: " + new Date().toLocaleTimeString();
+        document.getElementById('status').textContent = "更新: " + new Date().toLocaleTimeString();
     } catch (e) { console.error(e); }
 }
 
-// 20秒おきに自動更新
-setInterval(update, 20000);
-update();
+// 起動シーケンス
+(async () => {
+    await loadUnyoData(); // 1回読込
+    update();             // 初回描画
+    setInterval(update, 20000);   // 位置更新
+    setInterval(loadUnyoData, 300000); // 運用データは5分おきに再読込
+})();
 </script>
 </body>
 </html>
