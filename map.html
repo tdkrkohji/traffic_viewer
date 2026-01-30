@@ -6,125 +6,147 @@
     <title>ライブ配線図 (CSS描画版)</title>
     <style>
         :root {
-            --bg: #0d1117;
-            --line: #ffffff;
-            --station-bg: rgba(255, 255, 255, 0.1);
-            --accent: #58a6ff;
+            --bg: #1a1a1a;
+            --rail: #ffffff;
+            --station: #ffffff;
+            --tokkyu: #ff4c7c;
+            --kakutei: #ced0d4;
         }
-        body {
-            margin: 0; background: var(--bg); color: #fff;
-            font-family: sans-serif; overflow-x: hidden;
-        }
-        header {
-            padding: 10px; background: rgba(0,0,0,0.5);
-            display: flex; align-items: center; border-bottom: 1px solid #333;
-        }
-        /* 線路を描画するエリア */
-        .railway-map {
+        body { margin: 0; background: var(--bg); color: #fff; font-family: sans-serif; }
+        header { padding: 10px; border-bottom: 1px solid #444; display: flex; align-items: center; }
+        
+        /* 全体のコンテナ */
+        .map-container {
             position: relative;
             width: 100%;
-            height: 400px; /* 必要に応じて調整 */
-            margin-top: 20px;
-            background: #000;
-            overflow-x: auto;
-            border-top: 1px solid #333; border-bottom: 1px solid #333;
+            height: 80vh;
+            overflow: auto;
+            padding: 20px;
         }
+        
+        /* 描画エリア */
         .canvas {
             position: relative;
-            width: 1200px; /* 描画の基準幅 */
-            height: 100%;
+            width: 1200px; /* 基準幅 */
+            height: 600px;
+            background: #111;
+            border-radius: 8px;
         }
-        /* 線路（CSSで引く） */
-        .track {
+
+        /* 線路の基本パーツ */
+        .rail {
             position: absolute;
-            height: 2px; background: var(--line);
-            width: 100%;
+            height: 2px;
+            background: var(--rail);
         }
-        .station-box {
+        /* 駅のホーム（白い箱） */
+        .platform {
             position: absolute;
-            background: var(--station-bg);
-            border: 1px solid #555;
-            color: #ccc; font-size: 10px;
-            display: flex; align-items: center; justify-content: center;
+            background: var(--station);
+            height: 12px;
+            width: 80px;
+            border: 1px solid #888;
+        }
+        .st-label {
+            position: absolute;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ccc;
         }
 
         /* 列車アイコン */
         .train {
             position: absolute;
-            width: 20px; height: 14px;
-            background: #f06; border-radius: 2px;
+            width: 24px;
+            height: 16px;
+            border-radius: 3px;
             border: 1px solid #fff;
+            z-index: 100;
             transform: translate(-50%, -50%);
-            z-index: 100; transition: all 1s ease;
-        }
-        .train-label {
-            position: absolute; top: -18px; left: 50%;
-            transform: translateX(-50%);
-            font-size: 10px; background: #000; padding: 1px 3px;
+            transition: all 1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: bold;
+            color: #000;
         }
 
-        /* 各駅・線路の具体的な位置設定 */
-        /* 例: 本線 */
-        .track.honsen-up { top: 150px; left: 0; width: 100%; }
-        .track.honsen-down { top: 180px; left: 0; width: 100%; }
-        /* 例: 新線 */
-        .track.shinsen-up { top: 100px; left: 0; width: 300px; }
+        /* 個別の配置設定（新宿〜明大前イメージ） */
+        /* 本線（上り・下り） */
+        .r-h-up { top: 200px; left: 0; width: 100%; }
+        .r-h-dn { top: 240px; left: 0; width: 100%; }
         
-        /* 駅ラベル */
-        .st-name { position: absolute; font-size: 12px; color: #aaa; }
+        /* 新線 */
+        .r-s-up { top: 140px; left: 0; width: 400px; border-bottom: 2px solid var(--rail); height: 0; }
+        .r-s-up::after { content:''; position:absolute; top:30px; left:380px; width:60px; height:30px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: skewX(-45deg); }
+
+        /* 新宿ホーム */
+        .pl-shinjuku-1 { top: 194px; left: 100px; }
+        .pl-shinjuku-2 { top: 234px; left: 100px; }
     </style>
 </head>
 <body>
 
 <header>
-    <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px;">← 戻る</a>
-    <h1 style="font-size:16px; margin:0;">京王線 配線図モニター</h1>
+    <a href="index.html" style="color:#58a6ff; text-decoration:none; margin-right:15px;">← 戻る</a>
+    <h1 style="font-size:18px; margin:0;">京王線 描画版ライブモニター</h1>
 </header>
 
-<div class="railway-map">
+<div class="map-container">
     <div class="canvas" id="mapCanvas">
-        <div class="track honsen-up"></div>
-        <div class="track honsen-down"></div>
+        <div class="rail r-h-up"></div>
+        <div class="rail r-h-dn"></div>
         
-        <div class="st-name" style="top:130px; left:50px;">新宿</div>
-        <div class="station-box" style="top:145px; left:40px; width:60px; height:12px;">1・2番線</div>
-        
-        <div class="st-name" style="top:130px; left:300px;">笹塚</div>
-        
+        <div class="st-label" style="top:160px; left:110px;">新 宿</div>
+        <div class="st-label" style="top:160px; left:480px;">笹 塚</div>
+
+        <div class="platform pl-shinjuku-1"></div>
+        <div class="platform pl-shinjuku-2"></div>
+        <div class="platform" style="top:194px; left:480px;"></div> <div class="platform" style="top:234px; left:480px;"></div>
+
         </div>
 </div>
 
 <script>
-// 座標を「ピクセル」ではなく「画面に対する％」や「独自グリッド」で管理可能
-const posMap = {
-    "E001_1": { x: 70, y: 151 },
-    "E001_2": { x: 70, y: 181 },
-    "E002":   { x: 300, y: 151 },
-    // いただいた座標を、このCSSのスケールに合わせて変換して登録
+// CSS描画上の座標と駅IDを紐付け
+const coordMap = {
+    "E001_1": { x: 140, y: 200 }, // 新宿1番線
+    "E001_2": { x: 140, y: 240 }, // 新宿2番線
+    "E002_1": { x: 520, y: 200 }, // 笹塚
+    "D002":   { x: 350, y: 240 }, // 笹塚付近(駅間)
 };
 
 async function update() {
-    const res = await fetch("https://i.opentidkeio.jp/data/traffic_info.json?" + Date.now());
-    const data = await res.json();
-    const canvas = document.getElementById('mapCanvas');
-    
-    document.querySelectorAll('.train').forEach(e => e.remove());
+    try {
+        const res = await fetch("https://i.opentidkeio.jp/data/traffic_info.json?" + Date.now());
+        const data = await res.json();
+        const canvas = document.getElementById('mapCanvas');
+        
+        // 前回の列車を削除
+        document.querySelectorAll('.train').forEach(e => e.remove());
 
-    [...(data.TS || []), ...(data.TB || [])].forEach(st => {
-        (st.ps || []).forEach(p => {
-            const key = p.bs ? `${st.id}_${p.bs}` : st.id;
-            const pos = posMap[key];
-            if(pos) {
-                const tr = document.createElement('div');
-                tr.className = 'train';
-                tr.style.left = pos.x + "px";
-                tr.style.top = pos.y + "px";
-                tr.innerHTML = `<div class="train-label">${p.tr}</div>`;
-                canvas.appendChild(tr);
-            }
+        const all = [...(data.TS || []), ...(data.TB || [])];
+        all.forEach(st => {
+            (st.ps || []).forEach(p => {
+                const key = p.bs ? `${st.id}_${p.bs}` : st.id;
+                const pos = coordMap[key] || coordMap[st.id];
+
+                if (pos) {
+                    const tr = document.createElement('div');
+                    tr.className = 'train';
+                    // 種別判定（暫定）
+                    tr.style.backgroundColor = (p.sy == 1) ? '#ff4c7c' : '#ced0d4';
+                    tr.style.left = pos.x + "px";
+                    tr.style.top = pos.y + "px";
+                    tr.innerText = p.tr;
+                    canvas.appendChild(tr);
+                }
+            });
         });
-    });
+    } catch(e) { console.error(e); }
 }
+
 setInterval(update, 30000);
 update();
 </script>
