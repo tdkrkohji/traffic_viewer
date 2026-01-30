@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja" data-version="v0.1.40">
+<html lang="ja" data-version="v0.1.48">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — v0.2.47</title>
+<title>運行中列車 v0.01 — 京王・井の頭線</title>
 <style>
 /* 基本スタイル（GitHub風・レスポンシブ） */
 :root{
@@ -26,7 +26,6 @@ header{padding:14px 12px; text-align:center}
 h1{margin:6px 0; font-size:18px}
 #meta{font-size:12px;color:var(--muted); display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap}
 
-/* タブ */
 .tab-bar{display:flex; justify-content:center; gap:8px; padding:8px 12px}
 .tab-btn{
   background:var(--panel); border:1px solid var(--border); padding:8px 14px; border-radius:8px;
@@ -34,12 +33,10 @@ h1{margin:6px 0; font-size:18px}
 }
 .tab-btn.active{border-color:var(--accent); color:var(--accent);}
 
-/* サブタブ */
 .subtabs{display:flex; justify-content:center; gap:8px; margin-top:6px}
 .subtab{background:var(--panel); border:1px solid var(--border); padding:6px 10px; border-radius:6px; cursor:pointer}
 .subtab.active{border-color:var(--accent); color:var(--accent); font-weight:600}
 
-/* コンテナとテーブル */
 .container{max-width:1100px; margin:14px auto; padding:0 12px}
 .table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:6px; background:var(--panel); padding:6px; margin-top:8px}
 table{width:100%; min-width:760px; border-collapse:collapse; margin:0; background:transparent}
@@ -49,7 +46,6 @@ th.sorted-asc::after{content:" ▲"; font-weight:600}
 th.sorted-desc::after{content:" ▼"; font-weight:600}
 tr:hover td{background: rgba(0,0,0,0.03);}
 
-/* 種別バッジ */
 .badge{padding:4px 6px; border-radius:4px; display:inline-block}
 .tokkyu{background:var(--tokkyu); color:#fff}
 .liner{background:var(--liner); color:#fff}
@@ -59,21 +55,17 @@ tr:hover td{background: rgba(0,0,0,0.03);}
 .kukan{background:var(--kukan); color:#000}
 .kakutei{background:var(--kakutei); color:#000}
 
-/* 通知 */
 #alerts{max-width:1100px; margin:14px auto; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px}
 #alerts h3{margin:0 0 8px; font-size:14px}
 .alert-item{padding:8px; border-radius:6px; margin-bottom:8px; font-size:13px}
 .alert-delay{background:#ffdfe0; color:#900}
 .alert-exchange{background:#fff6d6; color:#8a5b00}
 
-/* コントロール */
 .controls{max-width:1100px; margin:8px auto; display:flex; justify-content:flex-end; gap:8px; align-items:center; padding:0 12px}
 select.control, button.control{padding:6px 10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); cursor:pointer}
 
-/* フッター */
 footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
 
-/* スマホ調整 */
 @media (max-width:720px){
   body{font-size:12px}
   th,td{padding:6px 8px; font-size:12px}
@@ -84,28 +76,24 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
 <body>
 
 <header>
-  <h1>運行中列車 <small style="font-size:0.7em;color:var(--muted)">v0.1.3</small></h1>
+  <h1>運行中列車 <small style="font-size:0.7em;color:var(--muted)">v0.1.48</small></h1>
   <div id="meta">
     <div id="updateTime">データ更新: —</div>
     <div id="localTime">現在時刻: —</div>
   </div>
 </header>
 
-<!-- 路線切替 -->
 <div class="tab-bar" role="tablist" aria-label="路線切替">
   <button class="tab-btn active" data-line="keio">京王線</button>
   <button class="tab-btn" data-line="inok">井の頭線</button>
 </div>
 
 <div class="container">
-
-  <!-- 京王線 -->
   <section id="keio" class="line-block">
     <div class="subtabs" role="tablist" aria-label="上下切替">
       <button class="subtab active" data-dir="up">上り</button>
       <button class="subtab" data-dir="down">下り</button>
     </div>
-
     <div class="table-wrap" id="keio-up-wrap">
       <table id="keio-up">
         <thead>
@@ -124,7 +112,6 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
         <tbody></tbody>
       </table>
     </div>
-
     <div class="table-wrap" id="keio-down-wrap" style="display:none;">
       <table id="keio-down">
         <thead>
@@ -145,13 +132,11 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
     </div>
   </section>
 
-  <!-- 井の頭線 -->
   <section id="inok" class="line-block" style="display:none;">
     <div class="subtabs" role="tablist" aria-label="上下切替">
       <button class="subtab active" data-dir="up">上り</button>
       <button class="subtab" data-dir="down">下り</button>
     </div>
-
     <div class="table-wrap" id="inok-up-wrap">
       <table id="inok-up">
         <thead>
@@ -170,7 +155,6 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
         <tbody></tbody>
       </table>
     </div>
-
     <div class="table-wrap" id="inok-down-wrap" style="display:none;">
       <table id="inok-down">
         <thead>
@@ -190,48 +174,32 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
       </table>
     </div>
   </section>
-
 </div>
 
-<!-- 通知欄 -->
 <div id="alerts" role="region" aria-live="polite">
   <h3>通知</h3>
   <div id="alertsInner">特記事項はありません。</div>
-  <div style="margin-top:8px;font-size:12px;color:var(--muted)">
-    通知は発生から翌日 01:15 までブラウザに保存されます（ローカルストレージ）。
-  </div>
 </div>
 
-<!-- コントロール（下部） -->
 <div class="controls" role="toolbar" aria-label="設定">
   <label for="intervalSelect" style="color:var(--muted);margin-right:6px">更新間隔</label>
-  <select id="intervalSelect" class="control" aria-label="更新間隔">
+  <select id="intervalSelect" class="control">
     <option value="10000">10秒</option>
     <option value="30000" selected>30秒</option>
     <option value="60000">1分</option>
-    <option value="180000">3分</option>
   </select>
-
-  <button id="themeBtn" class="control" style="margin-left:8px">ダークモード：無効</button>
+  <button id="themeBtn" class="control">ダークモード：切替</button>
 </div>
 
 <footer>
-  <div>v0.1.3</div>
+  <div>v0.1.48</div>
 </footer>
 
 <script>
-window.onerror = function(message, source, lineno, colno, error) {
-  alert(
-    "エラーが発生しました\n\n" +
-    message + "\n\n" +
-    "行番号: " + lineno
-  );
-};
- 
 //* --- 基本設定とマップ --- */
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
-/* --- 完全版駅マップ（キーを文字列として定義） --- */
+// キーを引用符で囲み、3桁の文字列として定義
 const idMap = {
   "001":"京王線新宿","002":"笹塚","003":"代田橋","004":"明大前","005":"下高井戸","006":"桜上水","007":"上北沢",
   "008":"八幡山","009":"芦花公園","010":"千歳烏山","011":"仙川","012":"つつじヶ丘","013":"柴崎","014":"国領",
@@ -241,45 +209,16 @@ const idMap = {
   "036":"府中競馬正門前","037":"多摩動物公園","038":"京王片倉","039":"山田","040":"めじろ台","041":"狭間",
   "042":"高尾","043":"高尾山口","044":"京王多摩川","045":"京王稲田堤","046":"京王よみうりランド","047":"稲城",
   "048":"若葉台","049":"京王永山","050":"京王多摩センター","051":"京王堀之内","052":"南大沢","053":"多摩境",
-  "054":"橋本",
-  "081":"渋谷","082":"神泉","083":"駒場東大前","084":"池ノ上","085":"下北沢","086":"新代田","087":"東松原",
-  "088":"明大前","089":"永福町","090":"西永福","091":"浜田山","092":"高井戸","093":"富士見ヶ丘","094":"久我山",
-  "095":"三鷹台","096":"井の頭公園","097":"吉祥寺","100":"新線新宿",
-  "101":"新宿三丁目","102":"曙橋","103":"市ヶ谷","104":"九段下","105":"神保町","106":"小川町",
-  "107":"岩.本町","108":"馬喰横山","109":"浜町","110":"森下","111":"菊川","112":"住吉","113":"西大島",
-  "114":"大島","115":"東大島","116":"船堀","117":"一之江","118":"瑞江","119":"篠崎","120":"本八幡",
+  "054":"橋本","081":"渋谷","082":"神泉","083":"駒場東大前","084":"池ノ上","085":"下北沢","086":"新代田",
+  "087":"東松原","088":"明大前","089":"永福町","090":"西永福","091":"浜田山","092":"高井戸","093":"富士見ヶ丘",
+  "094":"久我山","095":"三鷹台","096":"井の頭公園","097":"吉祥寺","100":"新線新宿",
+  "101":"新宿三丁目","102":"曙橋","103":"市ヶ谷","104":"九段下","105":"神保町","106":"小川町","107":"岩本町",
+  "108":"馬喰横山","109":"浜町","110":"森下","111":"菊川","112":"住吉","113":"西大島","114":"大島",
+  "115":"東大島","116":"船堀","117":"一之江","118":"瑞江","119":"篠崎","120":"本八幡",
   "300":"京王線新宿・都営新宿線方面","301":"都営新宿線方面","302":"京王線新宿方面","303":"調布方面",
   "304":"高幡不動方面","305":"八幡山方面","306":"笹塚方面","400":"京王八王子方面","401":"高尾山口方面",
   "402":"橋本方面","403":"府中・府中競馬正門前方面","501":"明大前・永福町方面","502":"吉祥寺方面"
 };
-
-/* --- 補助関数 --- */
-
-// IDを常に3桁の文字列に変換するヘルパー
-function to3(id) {
-  return String(id).padStart(3, '0');
-}
-
-function posLabel(stId) {
-  const specialPos = {
-    "S016":"京王多摩川〜調布間 上り","S031":"京王片倉〜北野間 上り","D038":"北野〜京王片倉間 下り",
-    "S021":"東府中〜府中競馬正門前間 下り","S027":"多摩動物公園〜高幡不動間 上り",
-    "D037":"高幡不動〜多摩動物公園間 下り","D044":"調布〜京王多摩川間 下り",
-    "S002":"幡ヶ谷〜笹塚間 下り","U035":"笹塚〜幡ヶ谷間 上り"
-  };
-  if (specialPos[stId]) return specialPos[stId];
-  if (!stId || stId.length < 2) return "不明";
-
-  const kind = stId[0];
-  const n = parseInt(stId.slice(1), 10);
-  if (isNaN(n)) return "不明";
-
-  if (kind === "E") return idMap[to3(n)] || `#${n}`;
-  if (kind === "U") return `${idMap[to3(n + 1)] || n + 1}〜${idMap[to3(n)] || n}間 上り`;
-  if (kind === "D") return `${idMap[to3(n)] || n}〜${idMap[to3(n - 1)] || n - 1}間 下り`;
-  return "不明";
-}
-
 
 const syMap = {
   1:{name:"特急", cls:"tokkyu"}, 2:{name:"急行", cls:"kyuko"}, 3:{name:"快速", cls:"kaisoku"},
@@ -288,6 +227,11 @@ const syMap = {
 };
 
 /* --- 補助関数 --- */
+// 数値を3桁の文字列に変換する共通関数
+function to3(num) {
+  return String(num).padStart(3, '0');
+}
+
 function updownFromTrain(tr, stId) {
   const num = parseInt(tr.replace(/\D/g, ""), 10);
   if (!isNaN(num)) return (num % 2 === 0) ? "up" : "down";
@@ -305,29 +249,31 @@ function skToLabel(sk) {
 
 function classifyLineByIk(ik_tr) {
   const ikNum = parseInt(String(ik_tr).replace(/\D/g, ""), 10);
-  return (ikNum >= 55 && ikNum <= 100) ? "inok" : "keio";
+  return (ikNum >= 81 && ikNum <= 97) ? "inok" : "keio";
 }
 
 function posLabel(stId) {
-  if (stId === "S016") return "京王多摩川〜調布間 上り";
-  if (stId === "S031") return "京王片倉〜北野間 上り";
-  if (stId === "D038") return "北野〜京王片倉間 下り";
-  if (stId === "S021") return "東府中〜府中競馬正門前間 下り";
-  if (stId === "S027") return "多摩動物公園〜高幡不動間 上り";
-  if (stId === "D037") return "高幡不動〜多摩動物公園間 下り";
-  if (stId === "D044") return "調布〜京王多摩川間 下り";
-  if (stId === "S002") return "幡ヶ谷〜笹塚間 下り";
-  if (stId === "U035") return "笹塚〜幡ヶ谷間 上り";
+  const specialPos = {
+    "S016":"京王多摩川〜調布間 上り", "S031":"京王片倉〜北野間 上り", "D038":"北野〜京王片倉間 下り",
+    "S021":"東府中〜府中競馬正門前間 下り", "S027":"多摩動物公園〜高幡不動間 上り",
+    "D037":"高幡不動〜多摩動物公園間 下り", "D044":"調布〜京王多摩川間 下り",
+    "S002":"幡ヶ谷〜笹塚間 下り", "U035":"笹塚〜幡ヶ谷間 上り"
+  };
+  if (specialPos[stId]) return specialPos[stId];
   if (!stId || stId.length < 2) return "不明";
-  const kind = stId[0], n = parseInt(stId.slice(1), 10);
+
+  const kind = stId[0];
+  const n = parseInt(stId.slice(1), 10);
   if (isNaN(n)) return "不明";
-  if (kind === "E") return idMap[n] || `#${n}`;
-  if (kind === "U") return `${idMap[n + 1] || n + 1}〜${idMap[n] || n}間 上り`;
-  if (kind === "D") return `${idMap[n] || n}〜${idMap[n - 1] || n - 1}間 下り`;
+
+  // E:停車中, U:駅間上り, D:駅間下り
+  if (kind === "E") return idMap[to3(n)] || `#${n}`;
+  if (kind === "U") return `${idMap[to3(n + 1)] || n + 1}〜${idMap[to3(n)] || n}間 上り`;
+  if (kind === "D") return `${idMap[to3(n)] || n}〜${idMap[to3(n - 1)] || n - 1}間 下り`;
   return "不明";
 }
 
-/* --- 通知・ソート --- */
+/* --- 通知 --- */
 const NOTIF_KEY = "traffic_viewer_notifications_v1";
 function loadNotifs(){ try{ return JSON.parse(localStorage.getItem(NOTIF_KEY)) || {expires:0,list:[]}; }catch(e){ return {expires:0,list:[]}; } }
 function saveNotifs(obj){ localStorage.setItem(NOTIF_KEY, JSON.stringify(obj)); }
@@ -335,7 +281,7 @@ function addNotifUnique(type, text) {
   const obj = loadNotifs();
   if (!(obj.list || []).some(x => x.text === text)) {
     obj.list.push({ type, text, time: new Date().toLocaleTimeString("ja-JP", { hour12: false }) });
-    obj.expires = new Date().setHours(25, 15, 0, 0); // 翌1:15
+    obj.expires = new Date().setHours(25, 15, 0, 0); 
     saveNotifs(obj);
   }
 }
@@ -360,9 +306,6 @@ function bindSortable(table) {
       th.classList.add(asc ? "sorted-asc" : "sorted-desc");
       const rows = Array.from(table.tBodies[0].rows);
       rows.sort((a, b) => {
-        if (th.dataset.key === "pos") {
-          return (parseInt(a.dataset.trainId.slice(-3)) || 0) - (parseInt(b.dataset.trainId.slice(-3)) || 0) * (asc ? 1 : -1);
-        }
         const A = a.cells[idx].innerText, B = b.cells[idx].innerText;
         return asc ? A.localeCompare(B, "ja", { numeric: true }) : B.localeCompare(A, "ja", { numeric: true });
       });
@@ -378,27 +321,16 @@ async function fetchAndRender() {
     const res = await fetch(FEED_URL + "?cache=" + Date.now());
     const data = await res.json();
     
-    // Toei運用データの取得（任意）
-    let toeiMap = {};
-    try {
-      const tRes = await fetch("toei.txt");
-      if (tRes.ok) {
-        const tText = await tRes.text();
-        let cur = "";
-        tText.split("\n").forEach(l => {
-          l = l.trim();
-          if (/^\d+[A-Z]$/.test(l)) cur = l;
-          else if (l) l.split(",").forEach(id => toeiMap[id.trim()] = cur);
-        });
-      }
-    } catch(e) {}
-
-    // 更新時刻
+    // 更新時刻の表示
     const t = data.up?.[0]?.dt?.[0];
-    document.getElementById("updateTime").textContent = t ? `データ更新: ${t.yy}/${t.mt}/${t.dy} ${t.hh}:${t.mm}:${t.ss}` : "データ更新: —";
+    if(t) document.getElementById("updateTime").textContent = `データ更新: ${t.yy}/${t.mt}/${t.dy} ${t.hh}:${t.mm}:${t.ss}`;
 
-    // クリア
-    const bodies = { "keio-up": document.querySelector("#keio-up tbody"), "keio-down": document.querySelector("#keio-down tbody"), "inok-up": document.querySelector("#inok-up tbody"), "inok-down": document.querySelector("#inok-down tbody") };
+    const bodies = { 
+      "keio-up": document.querySelector("#keio-up tbody"), 
+      "keio-down": document.querySelector("#keio-down tbody"), 
+      "inok-up": document.querySelector("#inok-up tbody"), 
+      "inok-down": document.querySelector("#inok-down tbody") 
+    };
     Object.values(bodies).forEach(b => b.innerHTML = "");
 
     const trainCount = {};
@@ -415,23 +347,19 @@ async function fetchAndRender() {
         if (!targetBody) return;
 
         const sy = syMap[p.sy] || { name: "不明", cls: "" };
-        const ikLabel = idMap[p.ik_tr] || "不明";
+        const ikLabel = idMap[to3(p.ik_tr)] || `不明(${p.ik_tr})`; // 3桁変換して検索
         const dlNum = parseInt(p.dl, 10) || 0;
         
-        // 備考ロジック
         let remarks = [];
         if (sy.name === "特急" && p.sr === "8") remarks.push("特急(8両)");
         if (trainCount[trNo] > 1) { remarks.push("車両交換予定"); addNotifUnique("exchange", `${trNo}:車両交換予定`); }
-        if (p.ik_tr >= 101 && p.ik_tr <= 120) remarks.push("都営直通");
+        if (parseInt(p.ik_tr) >= 101 && parseInt(p.ik_tr) <= 120) remarks.push("都営直通");
         if (dlNum >= 15) addNotifUnique("delay", `${trNo}: ${dlNum}分遅れ`);
 
         const row = document.createElement("tr");
-        row.dataset.trainId = st.id || "";
-        const opLabel = toeiMap[trNo] ? `<span style="color:#00a;font-weight:bold;margin-right:4px;">${toeiMap[trNo]}</span>` : "";
-        
         row.innerHTML = `
           <td>${skToLabel(p.sk) || "-"}</td>
-          <td>${opLabel}${trNo}</td>
+          <td>${trNo}</td>
           <td>${ikLabel}</td>
           <td><span class="badge ${sy.cls}">${sy.name}</span></td>
           <td>${p.sr || ""}</td>
@@ -447,14 +375,10 @@ async function fetchAndRender() {
     renderNotifs();
     Object.keys(bodies).forEach(id => bindSortable(document.getElementById(id)));
 
-  } catch (err) {
-    console.error(err);
-  }
+  } catch (err) { console.error(err); }
 }
 
-// 初期化イベント
 document.addEventListener("DOMContentLoaded", () => {
-  // タブ切り替え
   document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
@@ -462,7 +386,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById(btn.dataset.line).style.display = "block";
   }));
   
-  // 上下切り替え
   document.querySelectorAll(".subtab").forEach(s => s.addEventListener("click", (e) => {
     const block = e.target.closest(".line-block");
     block.querySelectorAll(".subtab").forEach(x => x.classList.remove("active"));
@@ -471,12 +394,11 @@ document.addEventListener("DOMContentLoaded", () => {
     block.querySelector(`#${block.id}-${s.dataset.dir}-wrap`).style.display = "block";
   }));
 
-  // ダークモード
   const themeBtn = document.getElementById("themeBtn");
   themeBtn.addEventListener("click", () => {
     const isDark = document.documentElement.hasAttribute("data-theme");
-    if(isDark) { document.documentElement.removeAttribute("data-theme"); themeBtn.textContent = "ダークモード：無効"; }
-    else { document.documentElement.setAttribute("data-theme", "dark"); themeBtn.textContent = "ダークモード：有効"; }
+    if(isDark) { document.documentElement.removeAttribute("data-theme"); }
+    else { document.documentElement.setAttribute("data-theme", "dark"); }
   });
 
   fetchAndRender();
