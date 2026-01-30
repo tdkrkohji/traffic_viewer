@@ -47,3 +47,20 @@ const data = {
   "89K": ["5206","5841","5842","4835","4840","5895","5894","2837","2704","6779","4886","4811A"],
   "91K": ["6117","5108","5867","5866","2817","2832","4869","4876","5853A","5848A","4813A"]
 };
+/* ===== 共通正規化関数 ===== */
+function normalizeTr(tr) {
+  return String(tr).replace(/A$/, "");
+}
+
+/* ===== 逆引きマップ & 次番号マップ ===== */
+const trToUnyo = {};
+const trToNext = {};
+
+for (const [unyo, list] of Object.entries(data)) {
+  const normList = list.map(normalizeTr);
+
+  normList.forEach((tr, i) => {
+    trToUnyo[tr] = unyo;
+    trToNext[tr] = normList[i + 1] || null; // 次がなければ null
+  });
+}
