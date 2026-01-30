@@ -183,7 +183,6 @@ async function update() {
                     const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
                     const nextHtml = nextTr ? `<span style="color:#58a6ff">→${nextTr}</span>` : "";
                     // 方向判定：p.ki が "1" なら上り（左側表示）、それ以外は下り（右側表示）
-                    const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
 
                     el.innerHTML = `
                     <div class="train-label ${dirClass}">
