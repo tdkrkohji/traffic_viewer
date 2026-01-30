@@ -2,210 +2,150 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>京王線 運行情報 v0.0.2</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>京王線v0.03情報</title>
 
 <style>
-/* ===== 全体 ===== */
 body {
+  font-family: -apple-system,BlinkMacSystemFont,sans-serif;
+  background: #f8f8f8;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-  background: #f2f2f2;
-  color: #222;
+  padding: 0;
 }
-
-/* ===== ヘッダー ===== */
 .header {
-  background: #c40018; /* 京王レッド風 */
+  background: #c40018;
   color: #fff;
-  padding: 14px 16px;
+  padding: 12px;
+  text-align: center;
+  font-weight: bold;
 }
-.header h1 {
-  font-size: 18px;
-  margin: 0;
-}
-.header p {
-  font-size: 12px;
-  margin: 4px 0 0;
-  opacity: 0.9;
-}
-
-/* ===== リスト ===== */
-.list {
+.station-list {
   padding: 8px;
 }
-
-/* ===== カード ===== */
-.card {
-  background: #fff;
-  border-radius: 10px;
-  margin-bottom: 10px;
-  padding: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-/* 上段 */
-.card-top {
+.station {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid #ddd;
+  font-size: 14px;
 }
-
-/* 種別 */
-.type {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
+.station-name {
+  width: 140px;
   font-weight: 600;
 }
-.tokkyu { background:#ffe1e1; color:#c40018; }
-.kyuko { background:#fff0d9; color:#c26a00; }
-.kaisoku { background:#e6f0ff; color:#0047ab; }
-.kukan { background:#fff5cc; color:#8a6d00; }
-.kakutei { background:#e6ffe6; color:#006400; }
-.liner { background:#f0e6ff; color:#5a2ca0; }
-
-/* 列車番号 */
-.train-no {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-/* 行先 */
-.dest {
-  font-size: 14px;
-  margin-top: 6px;
-}
-
-/* 下段 */
-.card-bottom {
+.trains {
+  flex: 1;
   display: flex;
-  justify-content: space-between;
-  margin-top: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.train-card {
+  padding: 4px 6px;
+  border-radius: 4px;
   font-size: 12px;
-  color: #555;
+  color: #fff;
+  min-width: 36px;
+  text-align: center;
+}
+
+/* 種別色 */
+.tokkyu { background: #e60011; }
+.kyuko { background: #f57c00; }
+.kaisoku { background: #1565c0; }
+.kukan { background: #ffb300; }
+.kakutei { background: #2e7d32; }
+.liner { background: #6a1b9a; }
+
+/* 駅間 */
+.between {
+  font-size: 12px;
+  font-style: italic;
+  color: #666;
 }
 
 /* 遅延 */
 .delay {
-  color: #c40018;
-  font-weight: 700;
+  border: 2px solid #ff0000;
 }
 
-/* 駅間 */
-.between {
-  font-style: italic;
-}
-
-/* 備考 */
-.remarks {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #333;
+/* スマホ対応 */
+@media (max-width: 600px) {
+  .station-name { width: 100px; font-size: 13px; }
+  .train-card { font-size: 11px; }
 }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>京王線 運行情報</h1>
-  <p id="updated">更新中…</p>
-</div>
-
-<div class="list" id="train-list"></div>
+<div class="header">京王線 こすとれ風 運行情報</div>
+<div class="station-list" id="station-list"></div>
 
 <script>
-/* ===== 駅コード ===== */
-const stationMap = {
-  1:"京王線新宿",2:"笹塚",3:"代田橋",4:"明大前",5:"下高井戸",6:"桜上水",7:"上北沢",
-  8:"八幡山",9:"芦花公園",10:"千歳烏山",11:"仙川",12:"つつじヶ丘",13:"柴崎",14:"国領",
-  15:"布田",16:"調布",17:"西調布",18:"飛田給",19:"武蔵野台",20:"多磨霊園",21:"東府中",
-  22:"府中",23:"分倍河原",24:"中河原",25:"聖蹟桜ヶ丘",26:"百草園",27:"高幡不動",28:"南平",
-  29:"平山城址公園",30:"長沼",31:"北野",32:"京王八王子",
-  44:"京王多摩川",45:"京王稲田堤",46:"京王よみうりランド",47:"稲城",
-  48:"若葉台",49:"京王永山",50:"京王多摩センター",51:"京王堀之内",52:"南大沢",
-  53:"多摩境",54:"橋本",
-  300:"京王線新宿・都営新宿線方面",301:"都営新宿線方面",
-  302:"京王線新宿方面",303:"調布方面",
-  304:"高幡不動方面",400:"京王八王子方面",
-  401:"高尾山口方面",402:"橋本方面"
-};
+const stations = [
+  "京王線新宿","笹塚","代田橋","明大前","下高井戸","桜上水","上北沢","八幡山",
+  "芦花公園","千歳烏山","仙川","つつじヶ丘","柴崎","国領","布田","調布",
+  "西調布","飛田給","武蔵野台","多磨霊園","東府中","府中","分倍河原","中河原",
+  "聖蹟桜ヶ丘","百草園","高幡不動","南平","平山城址公園","長沼","北野","京王八王子",
+  "京王多摩川","京王稲田堤","京王よみうりランド","稲城","若葉台","京王永山","京王多摩センター",
+  "京王堀之内","南大沢","多摩境","橋本"
+];
 
-/* ===== 種別 ===== */
 const syMap = {
-  1:{name:"特急", cls:"tokkyu"},
-  2:{name:"急行", cls:"kyuko"},
-  3:{name:"快速", cls:"kaisoku"},
-  5:{name:"区間急行", cls:"kukan"},
-  6:{name:"各停", cls:"kakutei"},
-  9:{name:"ライナー", cls:"liner"},
-  11:{name:"ライナー", cls:"liner"}
+  1:{cls:"tokkyu"},
+  2:{cls:"kyuko"},
+  3:{cls:"kaisoku"},
+  5:{cls:"kukan"},
+  6:{cls:"kakutei"},
+  9:{cls:"liner"},
+  11:{cls:"liner"}
 };
 
-/* ===== 列車番号 001 表示 ===== */
-function formatTrainNo(tr) {
-  return String(tr ?? "").padStart(3, "0");
-}
+function formatTrainNo(tr){return String(tr ?? "").padStart(3,"0");}
 
-/* ===== 描画 ===== */
-function render() {
+function render(){
   fetch("https://i.opentidkeio.jp/data/traffic_info.json")
-    .then(res => res.json())
-    .then(data => {
-      const list = document.getElementById("train-list");
-      list.innerHTML = "";
-
-      document.getElementById("updated").textContent =
-        "最終更新 " + data.up;
-
-      data.TS.forEach(group => {
-        group.ps.forEach(t => {
-
-          const sy = syMap[t.sy] || {name:"不明", cls:""};
-          const dest = stationMap[t.ik_tr] || "―";
-
-          let pos = stationMap[t.ik];
-          let posCls = "";
-          if (!pos) {
-            pos = "駅間走行中";
-            posCls = "between";
-          }
-
-          let delay = "";
-          let delayCls = "";
-          if (t.dl && t.dl > 0) {
-            delay = t.dl + "分遅れ";
-            delayCls = "delay";
-          }
-
-          const card = document.createElement("div");
-          card.className = "card";
-
-          card.innerHTML = `
-            <div class="card-top">
-              <span class="type ${sy.cls}">${sy.name}</span>
-              <span class="train-no">${formatTrainNo(t.tr)}</span>
-            </div>
-
-            <div class="dest">行先：${dest}</div>
-
-            <div class="card-bottom">
-              <span class="${posCls}">現在：${pos}</span>
-              <span class="${delayCls}">${delay}</span>
-            </div>
-
-            ${t.inf ? `<div class="remarks">${t.inf}</div>` : ""}
-          `;
-
-          list.appendChild(card);
-        });
+  .then(r=>r.json())
+  .then(data=>{
+    const list = document.getElementById("station-list");
+    list.innerHTML = "";
+    
+    // 駅ごとの列車一覧へ変換
+    const map = {};
+    data.TS.forEach(g=>{
+      g.ps.forEach(t=>{
+        const pos = t.ik;
+        const stName = stations[pos-1] ?? null;
+        const key = stName || "駅間";
+        const sy = syMap[t.sy] || {};
+        const cls = sy.cls || "";
+        const no = formatTrainNo(t.tr);
+        const dl = t.dl>0 ? "⚠"+t.dl:"";
+        if(!map[key]) map[key]=[];
+        map[key].push({no,cls,dl});
       });
     });
+    
+    // 駅一覧描画
+    stations.forEach(st=>{
+      const trains = map[st] || [];
+      const div = document.createElement("div");
+      div.className="station";
+      div.innerHTML = `<div class="station-name">${st}</div><div class="trains"></div>`;
+      
+      const container = div.querySelector(".trains");
+      trains.forEach(t=>{
+        const c = document.createElement("div");
+        c.className="train-card "+t.cls+(t.dl?" delay":"");
+        c.textContent = t.no+(t.dl?" "+t.dl:"");
+        container.appendChild(c);
+      });
+      list.appendChild(div);
+    });
+  });
 }
 
-/* 初回＋30秒更新 */
 render();
-setInterval(render, 30000);
+setInterval(render,30000);
 </script>
 
 </body>
