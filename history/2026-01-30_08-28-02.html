@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ja" data-version="v0.1.50">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>運行中列車 — v0.1.50</title>
+<style>
+/* 基本スタイル */
+:root{
+  --bg:#f6f8fa; --panel:#ffffff; --muted:#6e7781; --border:#d0d7de; --accent:#0969da;
+  --tokkyu:#FF4C7C; --kyuko:#00B66A; --kaisoku:#0082FF; --kukan:#D8D100; --kakutei:#ced0d4; --liner:#c71585; --linermt:#32cd32;
+  --text:#24292e;
+}
+[data-theme="dark"]{
+  --bg:#0d1117; --panel:#0b1117; --muted:#9aa4b2; --border:#30363d; --accent:#58a6ff;
+  --tokkyu:#ff6b6b; --kyuko:#7bd389; --kaisoku:#8cc8ff; --kukan:#ffd86b; --kakutei:#5a5f66; --liner:#191970; --linermt:#32cd32;
+  --text:#c9d1d9;
+}
+html,body{height:100%}
+body{
+  margin:0; font-family:"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,Arial,sans-serif;
+  background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased;
+  line-height:1.45; font-size:13px; padding-bottom:120px;
+}
+header{padding:14px 12px; text-align:center}
+h1{margin:6px 0; font-size:18px}
+#meta{font-size:12px;color:var(--muted); display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:wrap}
+
+.tab-bar{display:flex; justify-content:center; gap:8px; padding:8px 12px}
+.tab-btn{
+  background:var(--panel); border:1px solid var(--border); padding:8px 14px; border-radius:8px;
+  cursor:pointer; color:var(--text); font-weight:600;
+}
+.tab-btn.active{border-color:var(--accent); color:var(--accent);}
+
+.subtabs{display:flex; justify-content:center; gap:8px; margin-top:6px}
+.subtab{background:var(--panel); border:1px solid var(--border); padding:6px 10px; border-radius:6px; cursor:pointer}
+.subtab.active{border-color:var(--accent); color:var(--accent); font-weight:600}
+
+.container{max-width:1100px; margin:14px auto; padding:0 12px}
+.table-wrap{overflow-x:auto; border:1px solid var(--border); border-radius:6px; background:var(--panel); padding:6px; margin-top:8px}
+table{width:100%; min-width:760px; border-collapse:collapse; margin:0; background:transparent}
+th,td{padding:8px 10px; border:1px solid var(--border); text-align:center; white-space:nowrap}
+th{background:transparent; cursor:pointer; font-weight:600}
+th.sorted-asc::after{content:" ▲"; font-weight:600}
+th.sorted-desc::after{content:" ▼"; font-weight:600}
+tr:hover td{background: rgba(0,0,0,0.03);}
+
+.badge{padding:4px 6px; border-radius:4px; display:inline-block}
+.tokkyu{background:var(--tokkyu); color:#fff}
+.liner{background:var(--liner); color:#fff}
+.linermt{background:var(--linermt); color:#fff}
+.kyuko{background:var(--kyuko); color:#fff}
+.kaisoku{background:var(--kaisoku); color:#fff}
+.kukan{background:var(--kukan); color:#000}
+.kakutei{background:var(--kakutei); color:#000}
+
+#alerts{max-width:1100px; margin:14px auto; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px}
+.alert-item{padding:8px; border-radius:6px; margin-bottom:8px; font-size:13px}
+.alert-delay{background:#ffdfe0; color:#900}
+.alert-exchange{background:#fff6d6; color:#8a5b00}
+
+.controls{max-width:1100px; margin:8px auto; display:flex; justify-content:flex-end; gap:8px; align-items:center; padding:0 12px}
+select.control, button.control{padding:6px 10px; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); cursor:pointer}
+
+footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>運行中列車 <small style="font-size:0.7em;color:var(--muted)">v0.1.50</small></h1>
+  <div id="meta">
+    <div id="updateTime">データ更新: —</div>
+    <div id="localTime">現在時刻: —</div>
+  </div>
+</header>
+
+<div class="tab-bar">
+  <button class="tab-btn active" data-line="keio">京王線</button>
+  <button class="tab-btn" data-line="inok">井の頭線</button>
+</div>
+
+<div class="container">
+  <section id="keio" class="line-block">
+    <div class="subtabs">
+      <button class="subtab active" data-dir="up">上り</button>
+      <button class="subtab" data-dir="down">下り</button>
+    </div>
+    <div class="table-wrap" id="keio-up-wrap">
+      <table id="keio-up">
+        <thead>
+          <tr><th data-key="sk">運用記号</th><th data-key="tr">列車番号</th><th data-key="ik">行先</th><th data-key="sy">種別</th><th data-key="sr">両数</th><th data-key="pos">現在位置</th><th data-key="bs">番線</th><th data-key="dl">遅れ</th><th data-key="remarks">備考</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="table-wrap" id="keio-down-wrap" style="display:none;">
+      <table id="keio-down">
+        <thead>
+          <tr><th data-key="sk">運用記号</th><th data-key="tr">列車番号</th><th data-key="ik">行先</th><th data-key="sy">種別</th><th data-key="sr">両数</th><th data-key="pos">現在位置</th><th data-key="bs">番線</th><th data-key="dl">遅れ</th><th data-key="remarks">備考</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="inok" class="line-block" style="display:none;">
+    <div class="subtabs">
+      <button class="subtab active" data-dir="up">上り</button>
+      <button class="subtab" data-dir="down">下り</button>
+    </div>
+    <div class="table-wrap" id="inok-up-wrap">
+      <table id="inok-up">
+        <thead>
+          <tr><th data-key="sk">上下</th><th data-key="tr">列車番号</th><th data-key="ik">行先</th><th data-key="sy">種別</th><th data-key="sr">両数</th><th data-key="pos">現在位置</th><th data-key="bs">番線</th><th data-key="dl">遅れ</th><th data-key="remarks">備考</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="table-wrap" id="inok-down-wrap" style="display:none;">
+      <table id="inok-down">
+        <thead>
+          <tr><th data-key="sk">上下</th><th data-key="tr">列車番号</th><th data-key="ik">行先</th><th data-key="sy">種別</th><th data-key="sr">両数</th><th data-key="pos">現在位置</th><th data-key="bs">番線</th><th data-key="dl">遅れ</th><th data-key="remarks">備考</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div id="alerts">
+  <h3>通知</h3>
+  <div id="alertsInner">特記事項はありません。</div>
+</div>
+
+<div class="controls">
+  <select id="intervalSelect" class="control">
+    <option value="10000">10秒</option>
+    <option value="30000" selected>30秒</option>
+    <option value="60000">1分</option>
+  </select>
+  <button id="themeBtn" class="control">ダークモード：切替</button>
+</div>
+
+<footer>v0.1.50</footer>
+
+<script>
+window.onerror = (m, s, l) => alert(`エラー: ${m}\n行: ${l}`);
+
+const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
+
+const idMap = {
+  "001":"京王線新宿","002":"笹塚","003":"代田橋","004":"明大前","005":"下高井戸","006":"桜上水","007":"上北沢",
+  "008":"八幡山","009":"芦花公園","010":"千歳烏山","011":"仙川","012":"つつじヶ丘","013":"柴崎","014":"国領",
+  "015":"布田","016":"調布","017":"西調布","018":"飛田給","019":"武蔵野台","020":"多磨霊園","021":"東府中",
+  "022":"府中","023":"分倍河原","024":"中河原","025":"聖蹟桜ヶ丘","026":"百草園","027":"高幡不動","028":"南平",
+  "029":"平山城址公園","030":"長沼","031":"北野","032":"京王八王子","033":"新線新宿","034":"初台","035":"幡ヶ谷",
+  "036":"府中競馬正門前","037":"多摩動物公園","038":"京王片倉","039":"山田","040":"めじろ台","041":"狭間",
+  "042":"高尾","043":"高尾山口","044":"京王多摩川","045":"京王稲田堤","046":"京王よみうりランド","047":"稲城",
+  "048":"若葉台","049":"京王永山","050":"京王多摩センター","051":"京王堀之内","052":"南大沢","053":"多摩境",
+  "054":"橋本","081":"渋谷","082":"神泉","083":"駒場東大前","084":"池ノ上","085":"下北沢","086":"新代田",
+  "087":"東松原","088":"明大前","089":"永福町","090":"西永福","091":"浜田山","092":"高井戸","093":"富士見ヶ丘",
+  "094":"久我山","095":"三鷹台","096":"井の頭公園","097":"吉祥寺","100":"新線新宿",
+  "101":"新宿三丁目","102":"曙橋","103":"市ヶ谷","104":"九段下","105":"神保町","106":"小川町","107":"岩本町",
+  "108":"馬喰横山","109":"浜町","110":"森下","111":"菊川","112":"住吉","113":"西大島","114":"大島",
+  "115":"東大島","116":"船堀","117":"一之江","118":"瑞江","119":"篠崎","120":"本八幡",
+  "300":"京王線新宿・都営新宿線方面","301":"都営新宿線方面","302":"京王線新宿方面","303":"調布方面",
+  "304":"高幡不動方面","305":"八幡山方面","306":"笹塚方面","400":"京王八王子方面","401":"高尾山口方面",
+  "402":"橋本方面","403":"府中・府中競馬正門前方面","501":"明大前・永福町方面","502":"吉祥寺方面"
+};
+
+const syMap = {
+  1:{name:"特急", cls:"tokkyu"}, 2:{name:"急行", cls:"kyuko"}, 3:{name:"快速", cls:"kaisoku"},
+  5:{name:"区間急行", cls:"kukan"}, 6:{name:"各停", cls:"kakutei"}, 9:{name:"ライナー", cls:"liner"},
+  11:{name:"ライナー", cls:"linermt"}
+};
+
+const to3 = (n) => String(n).padStart(3, '0');
+
+function updownFromTrain(tr, stId) {
+  const num = parseInt(tr.replace(/\D/g, ""), 10);
+  if (!isNaN(num)) return (num % 2 === 0) ? "up" : "down";
+  return "up";
+}
+
+function skToLabel(sk) {
+  const m = { "8":"8000", "9":"9000", "5":"5000", "2":"2000", "7":"7000", "0":"10-300" };
+  return m[String(sk)] || "";
+}
+
+function classifyLineByIk(ik_tr) {
+  const n = parseInt(ik_tr);
+  return (n >= 81 && n <= 97) ? "inok" : "keio";
+}
+
+function posLabel(stId) {
+  const special = {
+    "S016":"京王多摩川〜調布間 上り", "S031":"京王片倉〜北野間 上り", "D038":"北野〜京王片倉間 下り",
+    "S021":"東府中〜府中競馬正門前間 下り", "S027":"多摩動物公園〜高幡不動間 上り",
+    "D037":"高幡不動〜多摩動物公園間 下り", "D044":"調布〜京王多摩川間 下り",
+    "S002":"幡ヶ谷〜笹塚間 下り", "U035":"笹塚〜幡ヶ谷間 上り"
+  };
+  if (special[stId]) return special[stId];
+  if (!stId || stId.length < 2) return "不明";
+  const kind = stId[0], n = parseInt(stId.slice(1), 10);
+  if (kind === "E") return idMap[to3(n)] || `#${n}`;
+  if (kind === "U") return `${idMap[to3(n + 1)] || n+1}〜${idMap[to3(n)] || n}間 上り`;
+  if (kind === "D") return `${idMap[to3(n)] || n}〜${idMap[to3(n - 1)] || n-1}間 下り`;
+  return "不明";
+}
+
+/* --- 通知管理 --- */
+const NOTIF_KEY = "traffic_viewer_notifications_v1";
+function loadNotifs(){ try{ return JSON.parse(localStorage.getItem(NOTIF_KEY)) || {expires:0,list:[]}; }catch(e){ return {expires:0,list:[]}; } }
+function addNotifUnique(type, text) {
+  const obj = loadNotifs();
+  if (!obj.list.some(x => x.text === text)) {
+    obj.list.push({ type, text, time: new Date().toLocaleTimeString("ja-JP", { hour12: false }) });
+    obj.expires = new Date().setHours(25, 15, 0, 0); 
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(obj));
+  }
+}
+
+/* --- ソート機能 --- */
+function bindSortable(table) {
+  if (!table || table._bound) return;
+  table.tHead.querySelectorAll("th").forEach((th, idx) => {
+    th.addEventListener("click", () => {
+      const asc = !th.classList.contains("sorted-asc");
+      table.tHead.querySelectorAll("th").forEach(h => h.classList.remove("sorted-asc", "sorted-desc"));
+      th.classList.add(asc ? "sorted-asc" : "sorted-desc");
+      const rows = Array.from(table.tBodies[0].rows);
+      rows.sort((a, b) => {
+        const A = a.cells[idx].innerText, B = b.cells[idx].innerText;
+        return asc ? A.localeCompare(B, "ja", { numeric: true }) : B.localeCompare(A, "ja", { numeric: true });
+      });
+      rows.forEach(r => table.tBodies[0].appendChild(r));
+    });
+  });
+  table._bound = true;
+}
+
+async function fetchAndRender() {
+  try {
+    let toeiMap = {};
+    try {
+      const tRes = await fetch("toei.txt");
+      if (tRes.ok) {
+        const tText = await tRes.text();
+        let currentUnyo = "";
+        tText.split("\n").forEach(line => {
+          line = line.trim();
+          if (/^\d+[A-Z]$/.test(line)) currentUnyo = line;
+          else if (line) line.split(",").forEach(tr => toeiMap[tr.trim()] = currentUnyo);
+        });
+      }
+    } catch(e) {}
+
+    const res = await fetch(FEED_URL + "?cache=" + Date.now());
+    const data = await res.json();
+    
+    const t = data.up?.[0]?.dt?.[0];
+    if(t) document.getElementById("updateTime").textContent = `データ更新: ${t.yy}/${t.mt}/${t.dy} ${t.hh}:${t.mm}:${t.ss}`;
+
+    const bodies = { "keio-up": document.querySelector("#keio-up tbody"), "keio-down": document.querySelector("#keio-down tbody"), "inok-up": document.querySelector("#inok-up tbody"), "inok-down": document.querySelector("#inok-down tbody") };
+    Object.values(bodies).forEach(b => b.innerHTML = "");
+
+    const trainCount = {};
+    [...(data.TS || []), ...(data.TB || [])].forEach(st => (st.ps || []).forEach(p => { if(p.tr) trainCount[p.tr] = (trainCount[p.tr] || 0) + 1; }));
+
+    [...(data.TS || []), ...(data.TB || [])].forEach(st => {
+      (st.ps || []).forEach(p => {
+        const trNo = (p.tr || "").trim();
+        if (!trNo) return;
+
+        const line = classifyLineByIk(p.ik_tr);
+        const dir = updownFromTrain(trNo, st.id);
+        const targetBody = bodies[`${line}-${dir}`];
+        if (!targetBody) return;
+
+        const sy = syMap[p.sy] || { name: "不明", cls: "" };
+        const ikLabel = idMap[to3(p.ik_tr)] || `不明(${p.ik_tr})`;
+        const dlNum = parseInt(p.dl, 10) || 0;
+        
+        let remarks = [];
+        if (sy.name === "特急" && p.sr === "8") remarks.push("特急(8両)");
+        if (trainCount[trNo] > 1) { remarks.push("車両交換予定"); addNotifUnique("exchange", `${trNo}:車両交換予定`); }
+        if (parseInt(p.ik_tr) >= 101 && parseInt(p.ik_tr) <= 120) remarks.push("都営直通");
+        if (dlNum >= 15) addNotifUnique("delay", `${trNo}: ${dlNum}分遅れ`);
+
+        const unyoLabel = toeiMap[trNo] ? `<span style="color:#00a;font-weight:bold;margin-right:4px;">${toeiMap[trNo]}</span>` : "";
+
+        const row = document.createElement("tr");
+        row.dataset.trainId = st.id; // ソート用
+        row.innerHTML = `
+          <td>${skToLabel(p.sk) || "-"}</td>
+          <td>${unyoLabel}${trNo}</td>
+          <td>${ikLabel}</td>
+          <td><span class="badge ${sy.cls}">${sy.name}</span></td>
+          <td>${p.sr || ""}</td>
+          <td>${posLabel(st.id)}</td>
+          <td>${p.bs || ""}</td>
+          <td>${dlNum === 0 ? "平常" : dlNum + "分遅れ"}</td>
+          <td>${remarks.join("・")}</td>
+        `;
+        targetBody.appendChild(row);
+      });
+    });
+
+    const alertsOut = document.getElementById("alertsInner");
+    const obj = loadNotifs();
+    if (obj.list.length) {
+      alertsOut.innerHTML = "";
+      obj.list.forEach(it => {
+        const d = document.createElement("div");
+        d.className = `alert-item ${it.type === "delay" ? "alert-delay" : "alert-exchange"}`;
+        d.textContent = `${it.text} [${it.time}]`;
+        alertsOut.appendChild(d);
+      });
+    }
+    Object.keys(bodies).forEach(id => bindSortable(document.getElementById(id)));
+
+  } catch (err) { console.error(err); }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".line-block").forEach(lb => lb.style.display = "none");
+    document.getElementById(btn.dataset.line).style.display = "block";
+  }));
+  document.querySelectorAll(".subtab").forEach(s => s.addEventListener("click", (e) => {
+    const block = e.target.closest(".line-block");
+    block.querySelectorAll(".subtab").forEach(x => x.classList.remove("active"));
+    s.classList.add("active");
+    block.querySelectorAll(".table-wrap").forEach(w => w.style.display = "none");
+    block.querySelector(`#${block.id}-${s.dataset.dir}-wrap`).style.display = "block";
+  }));
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    document.documentElement.hasAttribute("data-theme") ? document.documentElement.removeAttribute("data-theme") : document.documentElement.setAttribute("data-theme", "dark");
+  });
+  fetchAndRender();
+  setInterval(fetchAndRender, 30000);
+  setInterval(() => { document.getElementById("localTime").textContent = "現在時刻: " + new Date().toLocaleTimeString("ja-JP"); }, 1000);
+});
+</script>
+</body>
+</html>
