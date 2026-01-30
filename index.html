@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — v0.1.43</title>
+<title>運行中列車 — v0.1.44</title>
 <style>
 /* 基本スタイル（GitHub風・レスポンシブ） */
 :root{
@@ -439,6 +439,7 @@ async function fetchAndRender(){
           const line = classifyLineByIk(ik_raw); // 新ルール: ik_tr 55~100 -> inok
           // upward/down based on train number parity (primary)
           const skLabel = skToLabel(p.sk);
+          const updown = updownFromTrain(trNo, st.id);
           const updownDisplay = skLabel || updown;
           const sy = syMap[p.sy] || {name:"不明", cls:""};
           const ikLabel = idMap[ikNum] || idMap[String(ik_raw).padStart(3,"0")] || "不明";
@@ -458,7 +459,7 @@ async function fetchAndRender(){
           // 行表示順：上下 → 列車番号 → 行先 → 種別 → 両数 → 現在位置 → 番線 → 遅れ → 備考
           const row = document.createElement("tr");
           row.innerHTML = `
-            <td>${skLabel || ""}</td>
+            <td>${updownDisplay}</td>
             <td>${trNo}</td>
             <td>${ikLabel}</td>
             <td><span class="badge ${sy.cls}">${sy.name}</span></td>
