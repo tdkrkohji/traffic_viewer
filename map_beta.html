@@ -176,16 +176,28 @@ async function update() {
                     const nextTr = getNextTr(p.tr);
                     const dest = getDestName(p.ik_tr);
                     const sr = p.sr ? `${p.sr}両` : "";
+
                     const delayHtml = (p.dl && parseInt(p.dl) > 0)
+
                         ? `<span class="delay-text">+${p.dl}</span>`
+
                         : "";
-                    
-                    const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
-                    const nextHtml = nextTr ? `<span style="color:#58a6ff">→${nextTr}</span>` : "";
-                    // 方向判定：p.ki が "1" なら上り（左側表示）、それ以外は下り（右側表示）
+
+                    const nextHtml = nextTr
+
+                        ? `<span style="color:#58a6ff">→${nextTr}</span>`
+
+                        : "";
+
+                    // ★ dirClass は1回だけ！
+                    const dirClass = (String(p.ki) === "1")
+
+                        ? "label-nobori"
+
+                        : "label-kudari";
 
                     el.innerHTML = `
-                    <div class="train-label ${dirClass}">
+                      <div class="train-label ${dirClass}">
                       <span class="car-model">${model}</span>
                       <span class="unyo-no">${unyo}</span>
                       <span class="car-sr">${sr}</span>
@@ -194,7 +206,7 @@ async function update() {
                       ${nextHtml}
                       ${delayHtml}
                     </div>
-`;
+                    `;
                 }
             });
         });
