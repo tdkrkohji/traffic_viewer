@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>京王線 ライブ配線図モニター</title>
+    <title>京王線 ライブ配線図モニター v0.2.1</title>
     <style>
         :root { --bg: #1a1a1a; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: sans-serif; overflow: hidden; }
@@ -16,61 +16,46 @@
 
         .map-wrapper {
             position: absolute; top: 50px; bottom: 0; left: 0; right: 0;
-            overflow: auto; -webkit-overflow-scrolling: touch;
-            background: #000;
+            overflow: auto; -webkit-overflow-scrolling: touch; background: #000;
         }
 
-        .map-content {
-            position: relative;
-            width: 1200px;
-            height: 675px; 
-        }
-
-        .map-img {
-            position: absolute; top: 0; left: 0;
-            width: 1200px; height: 675px;
-            display: block;
-            pointer-events: none;
-        }
+        .map-content { position: relative; width: 1200px; height: 675px; }
+        .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
 
         .train {
-            position: absolute;
-            width: 24px; height: 16px;
+            position: absolute; width: 24px; height: 16px;
             border-radius: 3px; border: 1.5px solid #fff;
-            transform: translate(-50%, -50%);
-            z-index: 100;
+            transform: translate(-50%, -50%); z-index: 100;
             transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 0 8px rgba(0,0,0,0.8);
             display: flex; align-items: center; justify-content: center;
         }
 
         .train-label {
-            position: absolute; top: -18px;
-            background: rgba(0,0,0,0.8); color: #fff;
-            padding: 1px 4px; border-radius: 3px;
+            position: absolute; top: -35px;
+            background: rgba(0,0,0,0.85); color: #fff;
+            padding: 2px 6px; border-radius: 4px;
             font-size: 10px; font-weight: bold; white-space: nowrap;
-            display: flex; gap: 4px;
+            display: flex; flex-direction: column; align-items: center;
+            line-height: 1.3; border: 1px solid #555;
         }
 
-        /* 遅れ表示のスタイル */
-        .delay-text {
-            color: #ffeb3b; /* 遅れは目立つように黄色 */
-            font-weight: bold;
-        }
+        .label-row { display: flex; gap: 5px; align-items: center; }
+        .delay-text { color: #ff4444; font-weight: bold; } /* 遅れは赤 */
+        .car-model { color: #00ffcc; font-size: 9px; }    /* 形式は少し目立つ色に */
+        .unyo-no { color: #58a6ff; } 
 
-        .sy-1 { background-color: #ff4c7c; } 
-        .sy-2 { background-color: #00b66a; } 
-        .sy-3 { background-color: #0082ff; } 
-        .sy-5 { background-color: #d8d100; color: #000; } 
-        .sy-6 { background-color: #888; }    
-        .sy-9, .sy-11 { background-color: #c71585; } 
+        /* 種別カラー */
+        .sy-1 { background-color: #ff4c7c; } .sy-2 { background-color: #00b66a; } 
+        .sy-3 { background-color: #0082ff; } .sy-5 { background-color: #d8d100; color: #000; } 
+        .sy-6 { background-color: #888; }    .sy-9, .sy-11 { background-color: #c71585; } 
     </style>
 </head>
 <body>
 
 <header>
-    <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:14px;">← 一覧に戻る</a>
-    <h1 style="font-size:15px; margin:0;">ライブ配線図 (新宿-明大前)</h1>
+    <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧</a>
+    <h1 style="font-size:14px; margin:0;">京王線 ライブモニター (sk参照版)</h1>
     <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">更新待機中...</div>
 </header>
 
@@ -84,6 +69,7 @@
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
+// 座標設定
 const posCoords = {
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
@@ -100,15 +86,46 @@ const posCoords = {
     "E004_1": {x: 1053, y: 91}, "E004_2": {x: 1053, y: 120}
 };
 
+// skに基づく形式判定
+function getCarModel(sk) {
+    const models = {
+        "2": "2000系",
+        "5": "5000系",
+        "7": "7000系",
+        "8": "8000系",
+        "9": "9000系",
+        "0": "10-300形"
+    };
+    return models[String(sk)] || "";
+}
+
+async function fetchUnyo() {
+    let map = {};
+    try {
+        const res = await fetch("toei.txt");
+        if (res.ok) {
+            const text = await res.text();
+            let currentUnyo = "";
+            text.split('\n').forEach(line => {
+                line = line.trim();
+                if (/^\d+[A-Z]$/.test(line)) currentUnyo = line;
+                else if (line) line.split(',').forEach(tr => map[tr.trim()] = currentUnyo);
+            });
+        }
+    } catch(e) {}
+    return map;
+}
+
 async function update() {
     try {
+        const unyoMap = await fetchUnyo();
         const res = await fetch(FEED_URL + "?" + Date.now());
         const data = await res.json();
         const layer = document.getElementById('trainLayer');
         const activeIds = new Set();
-        const allTrains = [...(data.TS || []), ...(data.TB || [])];
+        const all = [...(data.TS || []), ...(data.TB || [])];
 
-        allTrains.forEach(st => {
+        all.forEach(st => {
             (st.ps || []).forEach(p => {
                 if (!p.tr) return;
                 const key = p.bs ? `${st.id}_${p.bs}` : st.id;
@@ -127,13 +144,15 @@ async function update() {
                     el.style.left = `${coords.x}px`;
                     el.style.top = `${coords.y}px`;
 
-                    // 遅れ表示のロジック追加
-                    let delayHtml = "";
-                    if (p.dl && parseInt(p.dl) > 0) {
-                        delayHtml = `<span class="delay-text">+${p.dl}</span>`;
-                    }
-                    
-                    el.innerHTML = `<div class="train-label"><span>${p.tr}</span>${delayHtml}</div>`;
+                    const model = getCarModel(p.sk);
+                    const unyo = unyoMap[p.tr] || "--";
+                    const delay = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
+
+                    el.innerHTML = `
+                        <div class="train-label">
+                            <div class="label-row"><span class="car-model">${model}</span><span class="unyo-no">${unyo}</span></div>
+                            <div class="label-row"><span>${p.tr}</span>${delay}</div>
+                        </div>`;
                 }
             });
         });
