@@ -22,7 +22,6 @@
         .map-content { position: relative; width: 1200px; height: 675px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
 
-        /* 列車アイコン本体 */
         .train {
             position: absolute; width: 26px; height: 16px;
             border-radius: 2px; border: 1.5px solid #fff;
@@ -32,7 +31,6 @@
             display: flex; align-items: center; justify-content: center;
         }
 
-        /* 1段表示ラベル (白文字) */
         .train-label {
             position: absolute; top: -26px;
             background: rgba(0,0,0,0.85); color: #fff;
@@ -42,22 +40,19 @@
             display: flex; gap: 5px; align-items: center;
         }
 
-        .delay-text { color: #ff4444; font-weight: 900; } /* 遅れは赤強調 */
+        .delay-text { color: #ff4444; font-weight: 900; }
 
-        /* 種別色カラー（京王標準に準拠） */
-        .sy-1 { background-color: #ff4c7c; } /* 特急 */
-        .sy-2 { background-color: #00b66a; } /* 区急 */
-        .sy-3 { background-color: #0082ff; } /* 快速 */
-        .sy-5 { background-color: #d8d100; color: #000; } /* 急行 */
-        .sy-6 { background-color: #888; }    /* 各停 */
-        .sy-9, .sy-11 { background-color: #c71585; } /* ライナー */
+        /* 種別色設定 */
+        .sy-1 { background-color: #ff4c7c; } .sy-2 { background-color: #00b66a; } 
+        .sy-3 { background-color: #0082ff; } .sy-5 { background-color: #d8d100; color: #000; } 
+        .sy-6 { background-color: #888; }    .sy-9, .sy-11 { background-color: #c71585; } 
     </style>
 </head>
 <body>
 
 <header>
     <h1 style="font-size:14px; margin:0;">京王線 ライブモニター</h1>
-    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">読込中...</div>
+    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">データ取得中...</div>
 </header>
 
 <div class="map-wrapper">
@@ -70,7 +65,7 @@
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
-// 【最新の座標データ全流し込み】
+// 【最新提供分：全座標マッピングデータ】
 const posCoords = {
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
@@ -80,7 +75,7 @@ const posCoords = {
     "E034_1": {x: 367, y: 91},  "E034_2": {x: 367, y: 120},
     "D035":   {x: 430, y: 91},  "U034":   {x: 430, y: 120},
     "E035_1": {x: 490, y: 91},  "E035_2": {x: 490, y: 120},
-    "S002":   {x: 600, y: 91},  "U035":   {x: 600, y: 120},
+    "S002":   {x: 600, y: 91},  "U035":   {x: 600, y: 120}, // 最新指示(65/145)を反映
     "D003":   {x: 785, y: 65},  "U002":   {x: 785, y: 146},
     "E003_1": {x: 893, y: 91},  "E003_2": {x: 893, y: 120},
     "D004":   {x: 976, y: 91},  "U003":   {x: 976, y: 120},
@@ -101,7 +96,6 @@ const posCoords = {
     "E011_1": {x: 1122, y: 322}, "E011_2": {x: 1122, y: 351}
 };
 
-// 車両形式の判定
 function getCarModel(sk) {
     const models = { "2":"2000", "5":"5000", "7":"7000", "8":"8000", "9":"9000", "0":"10-300" };
     return models[String(sk)] || "";
@@ -113,14 +107,14 @@ async function update() {
         const data = await res.json();
         const layer = document.getElementById('trainLayer');
         const activeIds = new Set();
-        const all = [...(data.TS || []), ...(data.TB || [])];
+        const allTrains = [...(data.TS || []), ...(data.TB || [])];
         const posCounter = {};
 
-        all.forEach(st => {
+        allTrains.forEach(st => {
             (st.ps || []).forEach(p => {
                 if (!p.tr) return;
                 
-                // 駅IDと番線IDを組み合わせて座標を特定
+                // 駅IDと番線IDから座標キーを作成
                 const key = p.bs ? `${st.id}_${p.bs}` : st.id;
                 const base = posCoords[key];
 
@@ -128,7 +122,7 @@ async function update() {
                     const trId = String(p.tr);
                     activeIds.add(trId);
                     
-                    // 重複回避（同じ番線に2本いる場合は少し右にずらす）
+                    // 重なり防止
                     const cKey = `${base.x}_${base.y}`;
                     const offset = (posCounter[cKey] || 0) * 12;
                     posCounter[cKey] = (posCounter[cKey] || 0) + 1;
@@ -141,7 +135,6 @@ async function update() {
                         layer.appendChild(el);
                     }
 
-                    // スタイルと位置の更新
                     el.className = `train sy-${p.sy || '6'}`;
                     el.style.left = `${base.x + offset}px`;
                     el.style.top = `${base.y}px`;
@@ -149,7 +142,6 @@ async function update() {
                     const model = getCarModel(p.sk);
                     const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
 
-                    // 【更新】運用番号を削除し、形式と列車番号、遅延のみを表示
                     el.innerHTML = `
                         <div class="train-label">
                             <span>${model}</span>
@@ -160,21 +152,19 @@ async function update() {
             });
         });
 
-        // 画面から消えた列車を削除（ゴースト防止）
+        // 存在しない列車を消去
         document.querySelectorAll('.train').forEach(el => {
-            if (!activeIds.has(el.id.replace('tr-', ''))) {
-                el.remove();
-            }
+            const id = el.id.replace('tr-', '');
+            if (!activeIds.has(id)) el.remove();
         });
 
-        document.getElementById('status').textContent = "最終更新: " + new Date().toLocaleTimeString();
+        document.getElementById('status').textContent = "更新: " + new Date().toLocaleTimeString();
     } catch (e) {
-        console.error("Fetch Error:", e);
-        document.getElementById('status').textContent = "通信エラー";
+        console.error(e);
+        document.getElementById('status').textContent = "取得エラー";
     }
 }
 
-// 15秒おきに自動更新
 setInterval(update, 15000);
 update();
 </script>
