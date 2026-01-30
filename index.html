@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — v0.1.41</title>
+<title>運行中列車 — v0.1.43</title>
 <style>
 /* 基本スタイル（GitHub風・レスポンシブ） */
 :root{
@@ -285,14 +285,6 @@ function posLabel(stId){ if(stId === "S016") return "京王多摩川〜調布間
 /* 列車番号(tr) から偶奇で上下判定
    - tr の中の数字を結合して整数にし、その偶奇を使う
    - 数字が一切取れない場合は st.id の偶奇でフォールバック */
-function updownFromTrain(tr, stId){
-  if(tr){
-    const digits = (tr.match(/\d+/g) || []).join("");
-    if(digits){
-      const n = parseInt(digits,10);
-      if(!isNaN(n)) return (n % 2 === 0) ? "上り" : "下り";
-    }
-  }
   // fallback: use st.id parity
   if(stId && stId.length>1){
     const n = parseInt(stId.slice(1),10);
@@ -320,6 +312,19 @@ function classifyLineByIk(ik_tr){
   const ikNum = parseInt(String(ik_tr).replace(/\D/g,""),10);
   if(!isNaN(ikNum) && ikNum >= 55 && ikNum <= 100) return "inok";
   return "keio";
+}
+function skToLabel(sk){
+  if (sk === undefined || sk === null) return "";
+
+  const n = Number(sk);
+  if (n === 8) return "8000";
+  if (n === 9) return "9000";
+  if (n === 5) return "5000";
+  if (n === 2) return "2000";
+  if (n === 7) return "7000";
+  if (n === 0) return "10-300";
+
+  return "";
 }
 
 /* 並び替えユーティリティ */
@@ -433,7 +438,7 @@ async function fetchAndRender(){
           const ikNum = parseInt(String(ik_raw).replace(/\D/g,""),10);
           const line = classifyLineByIk(ik_raw); // 新ルール: ik_tr 55~100 -> inok
           // upward/down based on train number parity (primary)
-          const updown = updownFromTrain(trNo, st.id); // tr parity -> 上り/下り
+          const skLabel = skToLabel(p.sk);
           const updownDisplay = skLabel || updown;
           const sy = syMap[p.sy] || {name:"不明", cls:""};
           const ikLabel = idMap[ikNum] || idMap[String(ik_raw).padStart(3,"0")] || "不明";
@@ -453,7 +458,7 @@ async function fetchAndRender(){
           // 行表示順：上下 → 列車番号 → 行先 → 種別 → 両数 → 現在位置 → 番線 → 遅れ → 備考
           const row = document.createElement("tr");
           row.innerHTML = `
-            <td>${updownDisplay}</td>
+            <td>${skLabel || ""}</td>
             <td>${trNo}</td>
             <td>${ikLabel}</td>
             <td><span class="badge ${sy.cls}">${sy.name}</span></td>
@@ -466,8 +471,7 @@ async function fetchAndRender(){
           // ★ 列車IDをHTMLに埋め込む（ソートに使う）
           row.setAttribute("data-train-id", st.id || "");
           // 振り分け先は line ("keio" or "inok") + up/down
-          const targetBody = document.querySelector(`#${line}-${updown === "上り" ? "up" : "down"} tbody`);
-          if(targetBody) targetBody.appendChild(row);
+          const targetBody = document.querySelector(`#${line}-up tbody`);
         });
       });
     }
