@@ -2,43 +2,31 @@
 <html lang="ja">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>京王線 ライブ配線図モニター 完全版</title>
+    <title>京王線 ライブ配線図 (新宿-明大前) 完全版</title>
     <script src="unyo_kt.js"></script>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
-        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
+        body { margin: 0; background: var(--bg); color: #fff; font-family: sans-serif; overflow: hidden; }
         header { height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9); display: flex; align-items: center; border-bottom: 1px solid #333; position: fixed; top: 0; width: 100%; z-index: 1000; }
         .map-wrapper { position: absolute; top: 50px; bottom: 0; left: 0; right: 0; overflow: auto; background: #000; }
         .map-content { position: relative; width: 1200px; height: 675px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; pointer-events: none; }
         .train { position: absolute; width: 26px; height: 16px; border-radius: 2px; border: 1.5px solid #fff; transform: translate(-50%, -50%); z-index: 100; transition: all 1.5s linear; box-shadow: 0 0 10px #000; display: flex; align-items: center; justify-content: center; }
-        .train-label { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; display: flex; align-items: center; gap: 5px; border: 1px solid #444; pointer-events: none; }
-        
-        /* 上り・下りのラベル位置固定 */
+        .train-label { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; display: flex; align-items: center; gap: 5px; border: 1px solid #444; pointer-events: none; z-index: 110; }
         .label-nobori { right: 100%; margin-right: 8px; }
         .label-kudari { left: 100%; margin-left: 8px; }
-
-        /* 各種テキスト色 */
         .unyo-no { color: #ffeb3b; }
         .car-model { color: #00ffcc; font-size: 9px; }
-        .dest-text { background: #333; padding: 0 2px; border-radius: 2px; }
-        .delay-text { color: #ff4444; }
-
-        /* 種別色 */
-        .sy-1 { background-color: #ff4c7c; } /* 特急 */
-        .sy-2 { background-color: #00b66a; } /* 急行 */
-        .sy-3 { background-color: #0082ff; } /* 区急 */
-        .sy-5 { background-color: #d8d100; color: #000; } /* 快速 */
-        .sy-6 { background-color: #888; } /* 各停 */
-        .sy-9, .sy-11 { background-color: #c71585; } /* ライナー */
+        .dest-text { background: #333; padding: 0 3px; border-radius: 2px; }
+        .sy-1 { background-color: #ff4c7c; } .sy-2 { background-color: #00b66a; } .sy-3 { background-color: #0082ff; }
+        .sy-5 { background-color: #d8d100; color: #000; } .sy-6 { background-color: #888; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-size:14px; font-weight:bold;">京王線 ライブ配線図 (新宿-明大前)</div>
-    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">接続待機中...</div>
+    <h1 style="font-size:14px; margin:0;">京王線 運用モニター</h1>
+    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">読込中...</div>
 </header>
 
 <div class="map-wrapper">
@@ -49,11 +37,9 @@
 </div>
 
 <script>
-const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
-
-// --- 【重要】全ての座標データを1つも漏らさず記述 ---
+// --- 【全座標リスト】1つも漏らさず全て記述 ---
 const posCoords = {
-    // 新宿・新線新宿エリア
+    // 新宿・新線新宿
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
     "E002_1": {x: 680, y: 65},  "E002_2": {x: 680, y: 91},  "E002_3S": {x: 680, y: 120}, "E002_4": {x: 680, y: 146},
@@ -67,7 +53,7 @@ const posCoords = {
     "E003_1": {x: 893, y: 91},  "E003_2": {x: 893, y: 120},
     "D004":   {x: 976, y: 91},  "U003":   {x: 976, y: 120},
     "E004_1": {x: 1053, y: 91}, "E004_2": {x: 1053, y: 120},
-    // 笹塚・代田橋・明大前エリア
+    // 笹塚・代田橋・明大前
     "D005":   {x: 55,  y: 322}, "U004":   {x: 1145, y: 120},
     "E005_1": {x: 145, y: 322}, "E005_2": {x: 145, y: 351},
     "D006":   {x: 230, y: 322}, "U005":   {x: 230, y: 351},
@@ -84,26 +70,24 @@ const posCoords = {
     "E011_1": {x: 1122, y: 322}, "E011_2": {x: 1122, y: 351}
 };
 
+const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
+
 function getCarModel(sk) {
     const m = { "2":"2000", "5":"5000", "7":"7000", "8":"8000", "9":"9000", "0":"10-300" };
     return m[String(sk)] || "";
 }
 
 function getDestName(ik) {
-    const d = { 
-        "001":"新", "033":"N", "002":"笹", "003":"明", "006":"桜", "010":"烏", "012":"つ", "016":"調",
-        "018":"飛", "021":"東", "022":"府", "027":"高", "031":"北", "032":"八", "036":"馬", "037":"動",
-        "042":"尾", "043":"山", "048":"若", "050":"セ", "052":"沢", "054":"橋", "101":"市", "120":"本"
-    };
+    const d = { "001":"新", "033":"N", "002":"笹", "003":"明", "006":"桜", "010":"烏", "032":"八", "054":"橋" };
     return d[String(ik)] || ik;
 }
 
-// 運用取得ロジック（window.trToUnyoを最優先）
+// 運用を取得する (window.trToUnyoを優先し、ダメなら全スキャン)
 function getUnyo(tr) {
     const trStr = String(tr);
     if (window.trToUnyo && window.trToUnyo[trStr]) return window.trToUnyo[trStr];
-    if (typeof unyoData !== 'undefined') {
-        for (const [u, list] of Object.entries(unyoData)) {
+    if (window.unyoData) {
+        for (const [u, list] of Object.entries(window.unyoData)) {
             if (list.includes(trStr)) return u;
         }
     }
@@ -116,22 +100,20 @@ async function update() {
         const json = await res.json();
         const layer = document.getElementById('trainLayer');
         const activeIds = new Set();
-        const allTrains = [...(json.TS || []), ...(json.TB || [])];
-        const posCounter = {};
+        const all = [...(json.TS || []), ...(json.TB || [])];
+        const counter = {};
 
-        allTrains.forEach(st => {
+        all.forEach(st => {
             (st.ps || []).forEach(p => {
                 if (!p.tr) return;
-                
                 const key = p.bs ? `${st.id}_${p.bs}` : st.id;
                 const pos = posCoords[key] || posCoords[st.id];
 
                 if (pos) {
                     activeIds.add(p.tr);
-                    // 重なり防止
                     const cKey = `${pos.x}_${pos.y}`;
-                    const offset = (posCounter[cKey] || 0) * 10;
-                    posCounter[cKey] = (posCounter[cKey] || 0) + 1;
+                    const offset = (counter[cKey] || 0) * 10;
+                    counter[cKey] = (counter[cKey] || 0) + 1;
 
                     let el = document.getElementById(`tr-${p.tr}`);
                     if (!el) {
@@ -140,38 +122,28 @@ async function update() {
                         el.className = 'train';
                         layer.appendChild(el);
                     }
-                    
                     el.className = `train sy-${p.sy || '6'}`;
                     el.style.left = (pos.x + offset) + "px";
                     el.style.top = pos.y + "px";
 
-                    const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
-                    const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
-
+                    const dir = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
                     el.innerHTML = `
-                        <div class="train-label ${dirClass}">
+                        <div class="train-label ${dir}">
                             <span class="car-model">${getCarModel(p.sk)}</span>
                             <span class="unyo-no">${getUnyo(p.tr)}</span>
-                            <span class="car-sr">${p.sr ? p.sr+'両' : ''}</span>
                             <span class="dest-text">${getDestName(p.ik_tr)}</span>
                             <span>${p.tr}</span>
-                            ${delayHtml}
                         </div>`;
                 }
             });
         });
-
-        // 消えた列車を削除
         document.querySelectorAll('.train').forEach(e => {
             if (!activeIds.has(e.id.replace('tr-', ''))) e.remove();
         });
-        document.getElementById('status').textContent = "最終更新: " + new Date().toLocaleTimeString();
-    } catch (e) {
-        console.error("更新エラー:", e);
-    }
+        document.getElementById('status').textContent = "更新: " + new Date().toLocaleTimeString();
+    } catch (e) { console.error(e); }
 }
 
-// 読み込み完了後に開始
 window.onload = () => {
     update();
     setInterval(update, 2000);
