@@ -419,24 +419,21 @@ async function fetchAndRender(){
           const line = classifyLineByIk(ik_raw); // 新ルール: ik_tr 55~100 -> inok
           // upward/down based on train number parity (primary)
           const updown = updownFromTrain(trNo, st.id); // tr parity -> 上り/下り
-          // --- 追加: sk を表示用の形式に変換 ---
-let skLabel = "";
-
-if (p.sk !== undefined && p.sk !== null) {
-  const skStr = String(p.sk);
-  if (skStr === "8") skLabel = "8000";
-  else if (skStr === "9") skLabel = "9000";
-  else if (skStr === "5") skLabel = "5000";
-  else if (skStr === "2") skLabel = "2000";
-  else if (skStr === "7") skLabel = "7000";
-  else if (skStr === "0") skLabel = "10-300";
-}
+          // --- 追加: sk を表示用の形式に変換 --
+          let skLabel = "";
+          if (p.sk !== undefined && p.sk !== null) {
+            const skStr = String(p.sk);
+            if (skStr === "8") skLabel = "8000";
+            else if (skStr === "9") skLabel = "9000";
+            else if (skStr === "5") skLabel = "5000";
+            else if (skStr === "2") skLabel = "2000";
+            else if (skStr === "7") skLabel = "7000";
+            else if (skStr === "0") skLabel = "10-300";}
 
 // --- 追加: 上り/下りの代わりに表示する文字列 ---
-let updownDisplay = updown;
-if (skLabel) {
-  updownDisplay = skLabel;
-}
+          let updownDisplay = updown;
+          if (skLabel) {
+            updownDisplay = skLabel;}
           const sy = syMap[p.sy] || {name:"不明", cls:""};
           const ikLabel = idMap[ikNum] || idMap[String(ik_raw).padStart(3,"0")] || "不明";
           const pos = posLabel(st.id);
