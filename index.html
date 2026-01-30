@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — v0.1.38</title>
+<title>運行中列車 — v0.1.39</title>
 <style>
 /* 基本スタイル（GitHub風・レスポンシブ） */
 :root{
@@ -630,6 +630,71 @@ fetchAndRender = async function() {
   await origFetchAndRender();
   await appendToeiOperationLabels();
 };
+</script>
+  <script>
+// ▼ sk を表示用文字列に変換する
+function skToLabel(sk) {
+  switch (String(sk)) {
+    case "8": return "8000";
+    case "9": return "9000";
+    case "7": return "7000";
+    case "5": return "5000";
+    case "2": return "2000";
+    case "0": return "10-300";
+    default: return "";
+  }
+}
+
+// ▼ 既存の表示を壊さず、運用記号列を sk 表示に置き換える
+function applySkLabel() {
+  document.querySelectorAll("table tbody tr").forEach(row => {
+    const cells = row.querySelectorAll("td");
+    if (cells.length === 0) return;
+
+    // data-sk は fetchAndRender 内で直接触れないため、
+    // 列車番号から対応する sk を JSON 側で引き当てる代わりに
+    // 既に埋め込まれている data-train-id をキーとして再取得する
+    const trainId = row.getAttribute("data-train-id");
+    if (!trainId || !window.__skMap) return;
+
+    const sk = window.__skMap[trainId];
+    if (sk === undefined) return;
+
+    const label = skToLabel(sk);
+    if (!label) return;
+
+    // 1列目（運用記号）を書き換え
+    cells[0].textContent = label;
+  });
+}
+
+// ▼ fetchAndRender をフックして sk を保存
+(function () {
+  const orig = fetchAndRender;
+  window.__skMap = {};
+
+  fetchAndRender = async function () {
+    const res = await fetch(FEED_URL + "?cache=" + Date.now(), { cache: "no-store" });
+    const data = await res.json();
+
+    // sk を列車IDごとに保存
+    ["TS", "TB"].forEach(key => {
+      (data[key] || []).forEach(st => {
+        (st.ps || []).forEach(p => {
+          if (st.id && p.sk !== undefined) {
+            window.__skMap[st.id] = p.sk;
+          }
+        });
+      });
+    });
+
+    // 元の描画処理
+    await orig();
+
+    // sk 表示を反映
+    applySkLabel();
+  };
+})();
 </script>
 </body>
 </html>
