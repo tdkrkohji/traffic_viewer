@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>京王線 列車運行情報</title>
+<style>
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 6px 8px;
+    text-align: center;
+  }
+  th {
+    background: #f3f3f3;
+  }
+
+  /* 種別ごとの色分け（任意） */
+  .tokkyu { background:#ffdddd; }
+  .kyuko { background:#ffeacc; }
+  .kaisoku { background:#e6f0ff; }
+  .kukan { background:#fff3cc; }
+  .kakutei { background:#e8ffe8; }
+  .liner { background:#f0e6ff; }
+</style>
+</head>
+<body>
+
+<h2>列車運行情報</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th data-key="tr">列車番号</th>
+      <th data-key="ik">行先</th>
+      <th data-key="sy">種別</th>
+      <th data-key="sr">両数</th>
+      <th data-key="pos">現在位置</th>
+      <th data-key="bs">番線</th>
+      <th data-key="dl">遅れ</th>
+      <th data-key="remarks">備考</th>
+    </tr>
+  </thead>
+  <tbody id="train-body"></tbody>
+</table>
+
+<script>
+/* ===== 駅コード ===== */
+const stationMap = {
+  1:"京王線新宿",2:"笹塚",3:"代田橋",4:"明大前",5:"下高井戸",6:"桜上水",7:"上北沢",
+  8:"八幡山",9:"芦花公園",10:"千歳烏山",11:"仙川",12:"つつじヶ丘",13:"柴崎",14:"国領",
+  15:"布田",16:"調布",17:"西調布",18:"飛田給",19:"武蔵野台",20:"多磨霊園",21:"東府中",
+  22:"府中",23:"分倍河原",24:"中河原",25:"聖蹟桜ヶ丘",26:"百草園",27:"高幡不動",28:"南平",
+  29:"平山城址公園",30:"長沼",31:"北野",32:"京王八王子",
+  44:"京王多摩川",45:"京王稲田堤",46:"京王よみうりランド",47:"稲城",
+  48:"若葉台",49:"京王永山",50:"京王多摩センター",51:"京王堀之内",52:"南大沢",53:"多摩境",
+  54:"橋本",
+  81:"渋谷",82:"神泉",83:"駒場東大前",84:"池ノ上",85:"下北沢",86:"新代田",
+  87:"東松原",88:"明大前",89:"永福町",90:"西永福",91:"浜田山",92:"高井戸",
+  93:"富士見ヶ丘",94:"久我山",95:"三鷹台",96:"井の頭公園",97:"吉祥寺",
+  300:"京王線新宿・都営新宿線方面",301:"都営新宿線方面",
+  302:"京王線新宿方面",303:"調布方面",
+  304:"高幡不動方面",400:"京王八王子方面",
+  401:"高尾山口方面",402:"橋本方面"
+};
+
+/* ===== 種別 ===== */
+const syMap = {
+  1:{name:"特急", cls:"tokkyu"},
+  2:{name:"急行", cls:"kyuko"},
+  3:{name:"快速", cls:"kaisoku"},
+  5:{name:"区間急行", cls:"kukan"},
+  6:{name:"各停", cls:"kakutei"},
+  9:{name:"ライナー", cls:"liner"},
+  11:{name:"ライナー", cls:"liner"}
+};
+
+/* ===== JSON取得＆描画 ===== */
+fetch("https://i.opentidkeio.jp/data/traffic_info.json")
+  .then(res => res.json())
+  .then(data => {
+    const tbody = document.getElementById("train-body");
+
+    data.TS.forEach(group => {
+      group.ps.forEach(t => {
+        const tr = document.createElement("tr");
+
+        const syInfo = syMap[t.sy] || {name:"不明", cls:""};
+
+        tr.innerHTML = `
+          <td>${t.tr || ""}</td>
+          <td>${stationMap[t.ik_tr] || t.ik_tr || ""}</td>
+          <td class="${syInfo.cls}">${syInfo.name}</td>
+          <td>${t.sr || ""}</td>
+          <td>${stationMap[t.ik] || t.ik || ""}</td>
+          <td>${t.bs || ""}</td>
+          <td>${t.dl ? t.dl + "分" : ""}</td>
+          <td>${t.inf || ""}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
