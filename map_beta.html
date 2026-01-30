@@ -129,13 +129,13 @@ function getDestName(ik) {
 
 // 運用番号（dataオブジェクト）から tr を参照して逆引き
 function getUnyoFromJS(trNo) {
-    if (typeof data === 'undefined') return null;
-    for (const [unyoName, trainList] of Object.entries(data)) {
-        if (trainList.includes(String(trNo))) {
-            return unyoName;
-        }
-    }
-    return null;
+    if (typeof trToUnyo === "undefined") return null;
+    return trToUnyo[String(trNo)] || null;
+}
+
+function getNextTr(trNo) {
+    if (typeof trToNext === "undefined") return null;
+    return trToNext[String(trNo)] || null;
 }
 
 async function update() {
@@ -173,22 +173,29 @@ async function update() {
 
                     const model = getCarModel(p.sk);
                     const unyo = getUnyoFromJS(p.tr) || "--";
+                    const nextTr = getNextTr(p.tr);
                     const dest = getDestName(p.ik_tr);
                     const sr = p.sr ? `${p.sr}両` : "";
-                    const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
-
+                    const delayHtml = (p.dl && parseInt(p.dl) > 0)
+                        ? `<span class="delay-text">+${p.dl}</span>`
+                        : "";
+                    
+                    const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
+                    const nextHtml = nextTr ? `<span style="color:#58a6ff">→${nextTr}</span>` : "";
                     // 方向判定：p.ki が "1" なら上り（左側表示）、それ以外は下り（右側表示）
                     const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
 
                     el.innerHTML = `
-                        <div class="train-label ${dirClass}">
-                            <span class="car-model">${model}</span>
-                            <span class="unyo-no">${unyo}</span>
-                            <span class="car-sr">${sr}</span>
-                            <span class="dest-text">${dest}</span>
-                            <span>${p.tr}</span>
-                            ${delayHtml}
-                        </div>`;
+  <div class="train-label ${dirClass}">
+    <span class="car-model">${model}</span>
+    <span class="unyo-no">${unyo}</span>
+    <span class="car-sr">${sr}</span>
+    <span class="dest-text">${dest}</span>
+    <span>${p.tr}</span>
+    ${nextHtml}
+    ${delayHtml}
+  </div>
+`;
                 }
             });
         });
