@@ -84,7 +84,7 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
 <body>
 
 <header>
-  <h1>v0.021 <small style="font-size:0.7em;color:var(--muted)">v0.1.3</small></h1>
+  <h1>運行中列車 <small style="font-size:0.7em;color:var(--muted)">v0.1.3</small></h1>
   <div id="meta">
     <div id="updateTime">データ更新: —</div>
     <div id="localTime">現在時刻: —</div>
@@ -110,7 +110,7 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
       <table id="keio-up">
         <thead>
           <tr>
-            <th data-key="skLabel">形式</th>
+            <th data-key="updown">運用記号</th>
             <th data-key="tr">列車番号</th>
             <th data-key="ik">行先</th>
             <th data-key="sy">種別</th>
@@ -129,7 +129,7 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
       <table id="keio-down">
         <thead>
           <tr>
-            <th data-key="skLabel">形式</th>
+            <th data-key="updown">運用記号</th>
             <th data-key="tr">列車番号</th>
             <th data-key="ik">行先</th>
             <th data-key="sy">種別</th>
@@ -419,27 +419,11 @@ async function fetchAndRender(){
           const line = classifyLineByIk(ik_raw); // 新ルール: ik_tr 55~100 -> inok
           // upward/down based on train number parity (primary)
           const updown = updownFromTrain(trNo, st.id); // tr parity -> 上り/下り
-// --- 追加: 上り/下りの代わりに表示する文字列 ---
-          let updownDisplay = updown;
-          if (skLabel) {
-            updownDisplay = skLabel;}
           const sy = syMap[p.sy] || {name:"不明", cls:""};
           const ikLabel = idMap[ikNum] || idMap[String(ik_raw).padStart(3,"0")] || "不明";
           const pos = posLabel(st.id);
           const sr = p.sr || "";
           const bs = p.bs || "";
-          // --- 追加: sk を表示用の形式に変換 ---
-          let skLabel = "";
-          // sk が存在する場合のみ判定
-          if (p.sk !== undefined && p.sk !== null) {
-            const skStr = String(p.sk);
-            if (skStr === "8") skLabel = "8000";
-            else if (skStr === "9") skLabel = "9000";
-            else if (skStr === "5") skLabel = "5000";
-            else if (skStr === "2") skLabel = "2000";
-            else if (skStr === "7") skLabel = "7000";
-            else if (skStr === "0") skLabel = "10-300";
-          }
           const dlNum = parseInt(p.dl,10) || 0;
           const dlLabel = (p.dl === "00" || dlNum === 0) ? "平常" : `${dlNum}分遅れ`;
 
@@ -453,7 +437,7 @@ async function fetchAndRender(){
           // 行表示順：上下 → 列車番号 → 行先 → 種別 → 両数 → 現在位置 → 番線 → 遅れ → 備考
           const row = document.createElement("tr");
           row.innerHTML = `
-            <td>${updownDisplay}</td>
+            <td>${updown}</td>
             <td>${trNo}</td>
             <td>${ikLabel}</td>
             <td><span class="badge ${sy.cls}">${sy.name}</span></td>
