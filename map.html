@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title>京王線 ライブ配線図モニター Ver.1.1</title>
+    <script src="unyo_kt.js"></script>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
@@ -31,7 +32,6 @@
             display: flex; align-items: center; justify-content: center;
         }
 
-        /* 列車ラベル：1行表示の設定 */
         .train-label {
             position: absolute;
             top: 50%;
@@ -46,14 +46,14 @@
         }
 
         /* 方向別の位置指定：上りは右、下りは左 */
-        .label-nobori { right: 100%; margin-right: 8px; }  /* アイコンの右側 */
-        .label-kudari { left: 100%; margin-left: 8px; } /* アイコンの左側 */
+        .label-nobori { left: 100%; margin-left: 8px; }  /* アイコンの右側 */
+        .label-kudari { right: 100%; margin-right: 8px; } /* アイコンの左側 */
 
         .delay-text { color: #ff4444; font-weight: 900; }
         .car-model { color: #00ffcc; font-size: 9px; }
         .unyo-no { color: #ffeb3b; }
-        .car-sr { color: #aaa; font-size: 9px; } /* 両数 */
-        .dest-text { color: #fff; background: #333; padding: 0 3px; border-radius: 2px; } /* 行き先 */
+        .car-sr { color: #aaa; font-size: 9px; } 
+        .dest-text { color: #fff; background: #333; padding: 0 3px; border-radius: 2px; } 
 
         .sy-1 { background-color: #ff4c7c; }
         .sy-2 { background-color: #00b66a; }
@@ -116,7 +116,6 @@ function getCarModel(sk) {
     return models[String(sk)] || "";
 }
 
-// 【新規】行き先コード変換
 function getDestName(ik) {
     const destMap = {
         "001":"新", "033":"N", "002":"笹", "003":"明", "006":"桜", "010":"烏", "012":"つ", "016":"調",
@@ -127,8 +126,22 @@ function getDestName(ik) {
     return destMap[String(ik)] || ik;
 }
 
+// 【アップデート】jsデータから運用番号を逆引きする関数
+function getUnyoFromJS(trNo) {
+    // unyo_kt.js 内の 'data' 変数を走査
+    if (typeof data === 'undefined') return null;
+    for (const [unyoName, trainList] of Object.entries(data)) {
+        if (trainList.includes(String(trNo))) {
+            return unyoName;
+        }
+    }
+    return null;
+}
+
 async function fetchUnyo() {
     let map = {};
+    // まず unyo_kt.js のデータ（変数data）からマップを作成
+    // ※動的な更新はされないが、初期値として有効
     try {
         const res = await fetch("toei.txt?" + Date.now());
         if (!res.ok) return map;
@@ -155,10 +168,10 @@ async function update() {
     try {
         const unyoMap = await fetchUnyo();
         const res = await fetch(FEED_URL + "?" + Date.now());
-        const data = await res.json();
+        const json = await res.json();
         const layer = document.getElementById('trainLayer');
         const activeIds = new Set();
-        const allTrains = [...(data.TS || []), ...(data.TB || [])];
+        const allTrains = [...(json.TS || []), ...(json.TB || [])];
         const posCounter = {};
 
         allTrains.forEach(st => {
@@ -186,14 +199,16 @@ async function update() {
                     el.style.top = `${base.y}px`;
 
                     const model = getCarModel(p.sk);
-                    const unyo = unyoMap[p.tr] || "--";
+                    
+                    // 【修正点】運用番号の取得優先順位：toei.txt > unyo_kt.js
+                    const unyo = unyoMap[p.tr] || getUnyoFromJS(p.tr) || "--";
+                    
                     const dest = getDestName(p.ik_tr);
                     const sr = p.sr ? `${p.sr}両` : "";
                     const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
 
                     const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
 
-                    // ラベルの中身：[形式] [運用] [両数] [行き先] [列番] [遅れ]
                     el.innerHTML = `
                         <div class="train-label ${dirClass}">
                             <span class="car-model">${model}</span>
