@@ -3,13 +3,13 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>ライブ配線図モニター — v0.1.65</title>
+    <title>京王線 ライブ配線図モニター</title>
     <style>
         :root { --bg: #1a1a1a; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: sans-serif; overflow: hidden; }
         
         header {
-            height: 50px; padding: 0 15px; background: rgba(0,0,0,0.85);
+            height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9);
             display: flex; align-items: center; border-bottom: 1px solid #444;
             position: fixed; top: 0; width: 100%; z-index: 1000;
         }
@@ -20,7 +20,6 @@
             background: #000;
         }
 
-        /* 画像サイズ 1200x675 に厳密に合わせる */
         .map-content {
             position: relative;
             width: 1200px;
@@ -31,16 +30,16 @@
             position: absolute; top: 0; left: 0;
             width: 1200px; height: 675px;
             display: block;
+            pointer-events: none;
         }
 
-        /* 列車アイコン */
         .train {
             position: absolute;
-            width: 22px; height: 16px;
+            width: 24px; height: 16px;
             border-radius: 3px; border: 1.5px solid #fff;
             transform: translate(-50%, -50%);
             z-index: 100;
-            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 0 8px rgba(0,0,0,0.8);
             display: flex; align-items: center; justify-content: center;
         }
@@ -50,28 +49,34 @@
             background: rgba(0,0,0,0.8); color: #fff;
             padding: 1px 4px; border-radius: 3px;
             font-size: 10px; font-weight: bold; white-space: nowrap;
+            display: flex; gap: 4px;
         }
 
-        /* 種別カラー（京王標準） */
-        .sy-1 { background-color: #ff4c7c; } /* 特急 */
-        .sy-2 { background-color: #00b66a; } /* 急行 */
-        .sy-3 { background-color: #0082ff; } /* 快速 */
-        .sy-5 { background-color: #d8d100; color: #000; } /* 区急 */
-        .sy-6 { background-color: #888; }    /* 各停 */
-        .sy-9, .sy-11 { background-color: #c71585; } /* ライナー */
+        /* 遅れ表示のスタイル */
+        .delay-text {
+            color: #ffeb3b; /* 遅れは目立つように黄色 */
+            font-weight: bold;
+        }
+
+        .sy-1 { background-color: #ff4c7c; } 
+        .sy-2 { background-color: #00b66a; } 
+        .sy-3 { background-color: #0082ff; } 
+        .sy-5 { background-color: #d8d100; color: #000; } 
+        .sy-6 { background-color: #888; }    
+        .sy-9, .sy-11 { background-color: #c71585; } 
     </style>
 </head>
 <body>
 
 <header>
     <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:14px;">← 一覧に戻る</a>
-    <h1 style="font-size:15px; margin:0;">京王線 リアルタイム配線図 (新宿-明大前)</h1>
-    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">接続中...</div>
+    <h1 style="font-size:15px; margin:0;">ライブ配線図 (新宿-明大前)</h1>
+    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">更新待機中...</div>
 </header>
 
 <div class="map-wrapper">
     <div class="map-content" id="mapContent">
-        <img src="image.png" class="map-img" alt="Railway Map">
+        <img src="image.png" class="map-img">
         <div id="trainLayer"></div>
     </div>
 </div>
@@ -79,7 +84,6 @@
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
-// 1200x675用にいただいた最新座標
 const posCoords = {
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
@@ -89,7 +93,7 @@ const posCoords = {
     "E034_1": {x: 367, y: 91},  "E034_2": {x: 367, y: 120},
     "D035":   {x: 430, y: 91},  "U034":   {x: 430, y: 120},
     "E035_1": {x: 490, y: 91},  "E035_2": {x: 490, y: 120},
-    "S002":   {x: 600, y: 65},  "U035":   {x: 600, y: 145},
+    "S002":   {x: 600, y: 91},  "U035":   {x: 600, y: 120},
     "D003":   {x: 785, y: 65},  "U002":   {x: 785, y: 146},
     "E003_1": {x: 893, y: 91},  "E003_2": {x: 893, y: 120},
     "D004":   {x: 976, y: 91},  "U003":   {x: 976, y: 120},
@@ -107,7 +111,6 @@ async function update() {
         allTrains.forEach(st => {
             (st.ps || []).forEach(p => {
                 if (!p.tr) return;
-                // 番線がある場合は ID_番線、ない場合は ID で検索
                 const key = p.bs ? `${st.id}_${p.bs}` : st.id;
                 const coords = posCoords[key] || posCoords[st.id];
 
@@ -120,27 +123,28 @@ async function update() {
                         el.className = 'train';
                         layer.appendChild(el);
                     }
-                    // 種別に応じた色分け
                     el.className = `train sy-${p.sy || '6'}`;
                     el.style.left = `${coords.x}px`;
                     el.style.top = `${coords.y}px`;
-                    el.innerHTML = `<div class="train-label">${p.tr}</div>`;
+
+                    // 遅れ表示のロジック追加
+                    let delayHtml = "";
+                    if (p.dl && parseInt(p.dl) > 0) {
+                        delayHtml = `<span class="delay-text">+${p.dl}</span>`;
+                    }
+                    
+                    el.innerHTML = `<div class="train-label"><span>${p.tr}</span>${delayHtml}</div>`;
                 }
             });
         });
 
-        // データから消えた列車を画面から削除
         document.querySelectorAll('.train').forEach(el => {
             if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
         });
         document.getElementById('status').textContent = "更新: " + new Date().toLocaleTimeString();
-    } catch (e) {
-        console.error(e);
-        document.getElementById('status').textContent = "接続エラー";
-    }
+    } catch (e) { console.error(e); }
 }
 
-// 20秒ごとに更新（少し頻度を上げました）
 setInterval(update, 20000);
 update();
 </script>
