@@ -2,46 +2,83 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>京王線 列車運行情報</title>
+
 <style>
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 10px;
+}
+
+h2 {
+  text-align: center;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+th {
+  background: #f3f3f3;
+}
+
+/* 種別 */
+.tokkyu { background:#ffdddd; }
+.kyuko { background:#ffeacc; }
+.kaisoku { background:#e6f0ff; }
+.kukan { background:#fff3cc; }
+.kakutei { background:#e8ffe8; }
+.liner { background:#f0e6ff; }
+
+/* 遅延 */
+.delay {
+  color: #d00000;
+  font-weight: bold;
+}
+
+/* 駅間 */
+.between {
+  color: #666;
+  font-style: italic;
+}
+
+/* スマホ対応 */
+@media (max-width: 768px) {
   table {
-    border-collapse: collapse;
-    width: 100%;
-    font-size: 14px;
+    font-size: 12px;
   }
   th, td {
-    border: 1px solid #ccc;
-    padding: 6px 8px;
-    text-align: center;
+    padding: 4px;
   }
-  th {
-    background: #f3f3f3;
-  }
-
-  /* 種別ごとの色分け（任意） */
-  .tokkyu { background:#ffdddd; }
-  .kyuko { background:#ffeacc; }
-  .kaisoku { background:#e6f0ff; }
-  .kukan { background:#fff3cc; }
-  .kakutei { background:#e8ffe8; }
-  .liner { background:#f0e6ff; }
+}
 </style>
 </head>
 <body>
 
-<h2>列車運行情報</h2>
+<h2>京王線 列車運行情報</h2>
+<p id="updated" style="text-align:center;"></p>
 
 <table>
   <thead>
     <tr>
-      <th data-key="tr">列車番号</th>
-      <th data-key="ik">行先</th>
-      <th data-key="sy">種別</th>
-      <th data-key="sr">両数</th>
-      <th data-key="pos">現在位置</th>
-      <th data-key="bs">番線</th>
-      <th data-key="dl">遅れ</th>
-      <th data-key="remarks">備考</th>
+      <th>列車番号</th>
+      <th>行先</th>
+      <th>種別</th>
+      <th>両数</th>
+      <th>現在位置</th>
+      <th>番線</th>
+      <th>遅れ</th>
+      <th>備考</th>
     </tr>
   </thead>
   <tbody id="train-body"></tbody>
@@ -56,8 +93,8 @@ const stationMap = {
   22:"府中",23:"分倍河原",24:"中河原",25:"聖蹟桜ヶ丘",26:"百草園",27:"高幡不動",28:"南平",
   29:"平山城址公園",30:"長沼",31:"北野",32:"京王八王子",
   44:"京王多摩川",45:"京王稲田堤",46:"京王よみうりランド",47:"稲城",
-  48:"若葉台",49:"京王永山",50:"京王多摩センター",51:"京王堀之内",52:"南大沢",53:"多摩境",
-  54:"橋本",
+  48:"若葉台",49:"京王永山",50:"京王多摩センター",51:"京王堀之内",52:"南大沢",
+  53:"多摩境",54:"橋本",
   81:"渋谷",82:"神泉",83:"駒場東大前",84:"池ノ上",85:"下北沢",86:"新代田",
   87:"東松原",88:"明大前",89:"永福町",90:"西永福",91:"浜田山",92:"高井戸",
   93:"富士見ヶ丘",94:"久我山",95:"三鷹台",96:"井の頭公園",97:"吉祥寺",
@@ -78,33 +115,59 @@ const syMap = {
   11:{name:"ライナー", cls:"liner"}
 };
 
-/* ===== JSON取得＆描画 ===== */
-fetch("https://i.opentidkeio.jp/data/traffic_info.json")
-  .then(res => res.json())
-  .then(data => {
-    const tbody = document.getElementById("train-body");
+function render() {
+  fetch("https://i.opentidkeio.jp/data/traffic_info.json")
+    .then(res => res.json())
+    .then(data => {
+      const tbody = document.getElementById("train-body");
+      tbody.innerHTML = "";
 
-    data.TS.forEach(group => {
-      group.ps.forEach(t => {
-        const tr = document.createElement("tr");
+      document.getElementById("updated").textContent =
+        "最終更新: " + data.up;
 
-        const syInfo = syMap[t.sy] || {name:"不明", cls:""};
+      data.TS.forEach(group => {
+        group.ps.forEach(t => {
 
-        tr.innerHTML = `
-          <td>${t.tr || ""}</td>
-          <td>${stationMap[t.ik_tr] || t.ik_tr || ""}</td>
-          <td class="${syInfo.cls}">${syInfo.name}</td>
-          <td>${t.sr || ""}</td>
-          <td>${stationMap[t.ik] || t.ik || ""}</td>
-          <td>${t.bs || ""}</td>
-          <td>${t.dl ? t.dl + "分" : ""}</td>
-          <td>${t.inf || ""}</td>
-        `;
+          const tr = document.createElement("tr");
+          const sy = syMap[t.sy] || {name:"不明", cls:""};
 
-        tbody.appendChild(tr);
+          /* 現在位置 */
+          let posText = stationMap[t.ik] || "";
+          let posClass = "";
+          if (!stationMap[t.ik]) {
+            posText = "駅間走行中";
+            posClass = "between";
+          }
+
+          /* 遅延 */
+          let delayText = "";
+          let delayClass = "";
+          if (t.dl && t.dl > 0) {
+            delayText = t.dl + "分";
+            delayClass = "delay";
+          }
+
+          tr.innerHTML = `
+            <td>${t.tr || ""}</td>
+            <td>${stationMap[t.ik_tr] || ""}</td>
+            <td class="${sy.cls}">${sy.name}</td>
+            <td>${t.sr || ""}</td>
+            <td class="${posClass}">${posText}</td>
+            <td>${t.bs || ""}</td>
+            <td class="${delayClass}">${delayText}</td>
+            <td>${t.inf || ""}</td>
+          `;
+          tbody.appendChild(tr);
+        });
       });
     });
-  });
+}
+
+/* 初回表示 */
+render();
+
+/* 30秒ごとに自動更新 */
+setInterval(render, 30000);
 </script>
 
 </body>
