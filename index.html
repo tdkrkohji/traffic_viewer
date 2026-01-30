@@ -3,86 +3,116 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>京王線 列車運行情報</title>
+<title>京王線 運行情報 v0.0.2</title>
 
 <style>
+/* ===== 全体 ===== */
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  margin: 10px;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  background: #f2f2f2;
+  color: #222;
 }
 
-h2 {
-  text-align: center;
+/* ===== ヘッダー ===== */
+.header {
+  background: #c40018; /* 京王レッド風 */
+  color: #fff;
+  padding: 14px 16px;
+}
+.header h1 {
+  font-size: 18px;
+  margin: 0;
+}
+.header p {
+  font-size: 12px;
+  margin: 4px 0 0;
+  opacity: 0.9;
 }
 
-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 14px;
+/* ===== リスト ===== */
+.list {
+  padding: 8px;
 }
 
-th, td {
-  border: 1px solid #ccc;
-  padding: 6px;
-  text-align: center;
-  white-space: nowrap;
+/* ===== カード ===== */
+.card {
+  background: #fff;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-th {
-  background: #f3f3f3;
+/* 上段 */
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 /* 種別 */
-.tokkyu { background:#ffdddd; }
-.kyuko { background:#ffeacc; }
-.kaisoku { background:#e6f0ff; }
-.kukan { background:#fff3cc; }
-.kakutei { background:#e8ffe8; }
-.liner { background:#f0e6ff; }
+.type {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.tokkyu { background:#ffe1e1; color:#c40018; }
+.kyuko { background:#fff0d9; color:#c26a00; }
+.kaisoku { background:#e6f0ff; color:#0047ab; }
+.kukan { background:#fff5cc; color:#8a6d00; }
+.kakutei { background:#e6ffe6; color:#006400; }
+.liner { background:#f0e6ff; color:#5a2ca0; }
+
+/* 列車番号 */
+.train-no {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* 行先 */
+.dest {
+  font-size: 14px;
+  margin-top: 6px;
+}
+
+/* 下段 */
+.card-bottom {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #555;
+}
 
 /* 遅延 */
 .delay {
-  color: #d00000;
-  font-weight: bold;
+  color: #c40018;
+  font-weight: 700;
 }
 
 /* 駅間 */
 .between {
-  color: #666;
   font-style: italic;
 }
 
-/* スマホ対応 */
-@media (max-width: 768px) {
-  table {
-    font-size: 12px;
-  }
-  th, td {
-    padding: 4px;
-  }
+/* 備考 */
+.remarks {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #333;
 }
 </style>
 </head>
 <body>
 
-<h2>京王線 列車運行情報</h2>
-<p id="updated" style="text-align:center;"></p>
+<div class="header">
+  <h1>京王線 運行情報</h1>
+  <p id="updated">更新中…</p>
+</div>
 
-<table>
-  <thead>
-    <tr>
-      <th>列車番号</th>
-      <th>行先</th>
-      <th>種別</th>
-      <th>両数</th>
-      <th>現在位置</th>
-      <th>番線</th>
-      <th>遅れ</th>
-      <th>備考</th>
-    </tr>
-  </thead>
-  <tbody id="train-body"></tbody>
-</table>
+<div class="list" id="train-list"></div>
 
 <script>
 /* ===== 駅コード ===== */
@@ -95,9 +125,6 @@ const stationMap = {
   44:"京王多摩川",45:"京王稲田堤",46:"京王よみうりランド",47:"稲城",
   48:"若葉台",49:"京王永山",50:"京王多摩センター",51:"京王堀之内",52:"南大沢",
   53:"多摩境",54:"橋本",
-  81:"渋谷",82:"神泉",83:"駒場東大前",84:"池ノ上",85:"下北沢",86:"新代田",
-  87:"東松原",88:"明大前",89:"永福町",90:"西永福",91:"浜田山",92:"高井戸",
-  93:"富士見ヶ丘",94:"久我山",95:"三鷹台",96:"井の頭公園",97:"吉祥寺",
   300:"京王線新宿・都営新宿線方面",301:"都営新宿線方面",
   302:"京王線新宿方面",303:"調布方面",
   304:"高幡不動方面",400:"京王八王子方面",
@@ -115,58 +142,69 @@ const syMap = {
   11:{name:"ライナー", cls:"liner"}
 };
 
+/* ===== 列車番号 001 表示 ===== */
+function formatTrainNo(tr) {
+  return String(tr ?? "").padStart(3, "0");
+}
+
+/* ===== 描画 ===== */
 function render() {
   fetch("https://i.opentidkeio.jp/data/traffic_info.json")
     .then(res => res.json())
     .then(data => {
-      const tbody = document.getElementById("train-body");
-      tbody.innerHTML = "";
+      const list = document.getElementById("train-list");
+      list.innerHTML = "";
 
       document.getElementById("updated").textContent =
-        "最終更新: " + data.up;
+        "最終更新 " + data.up;
 
       data.TS.forEach(group => {
         group.ps.forEach(t => {
 
-          const tr = document.createElement("tr");
           const sy = syMap[t.sy] || {name:"不明", cls:""};
+          const dest = stationMap[t.ik_tr] || "―";
 
-          /* 現在位置 */
-          let posText = stationMap[t.ik] || "";
-          let posClass = "";
-          if (!stationMap[t.ik]) {
-            posText = "駅間走行中";
-            posClass = "between";
+          let pos = stationMap[t.ik];
+          let posCls = "";
+          if (!pos) {
+            pos = "駅間走行中";
+            posCls = "between";
           }
 
-          /* 遅延 */
-          let delayText = "";
-          let delayClass = "";
+          let delay = "";
+          let delayCls = "";
           if (t.dl && t.dl > 0) {
-            delayText = t.dl + "分";
-            delayClass = "delay";
+            delay = t.dl + "分遅れ";
+            delayCls = "delay";
           }
 
-          tr.innerHTML = `
-            <td>${t.tr || ""}</td>
-            <td>${stationMap[t.ik_tr] || ""}</td>
-            <td class="${sy.cls}">${sy.name}</td>
-            <td>${t.sr || ""}</td>
-            <td class="${posClass}">${posText}</td>
-            <td>${t.bs || ""}</td>
-            <td class="${delayClass}">${delayText}</td>
-            <td>${t.inf || ""}</td>
+          const card = document.createElement("div");
+          card.className = "card";
+
+          card.innerHTML = `
+            <div class="card-top">
+              <span class="type ${sy.cls}">${sy.name}</span>
+              <span class="train-no">${formatTrainNo(t.tr)}</span>
+            </div>
+
+            <div class="dest">行先：${dest}</div>
+
+            <div class="card-bottom">
+              <span class="${posCls}">現在：${pos}</span>
+              <span class="${delayCls}">${delay}</span>
+            </div>
+
+            ${t.inf ? `<div class="remarks">${t.inf}</div>` : ""}
           `;
-          tbody.appendChild(tr);
+
+          list.appendChild(card);
         });
       });
     });
 }
 
-/* 初回表示 */
+/* 初回＋30秒更新 */
 render();
-
-/* 30秒ごとに自動更新 */
 setInterval(render, 30000);
 </script>
 
