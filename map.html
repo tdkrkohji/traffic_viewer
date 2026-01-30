@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>京王線 ライブ配線図モニター Ver.1.03</title>
+    <title>京王線 ライブ配線図モニター Ver.1.1</title>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
@@ -39,7 +39,7 @@
             background: rgba(0,0,0,0.85); color: #fff;
             padding: 2px 7px; border-radius: 4px;
             font-size: 10px; font-weight: bold; white-space: nowrap;
-            display: flex; flex-direction: row; align-items: center; gap: 6px; /* 1行に並べる */
+            display: flex; flex-direction: row; align-items: center; gap: 5px; 
             border: 1px solid #444;
             pointer-events: none;
             z-index: 110;
@@ -52,6 +52,8 @@
         .delay-text { color: #ff4444; font-weight: 900; }
         .car-model { color: #00ffcc; font-size: 9px; }
         .unyo-no { color: #ffeb3b; }
+        .car-sr { color: #aaa; font-size: 9px; } /* 両数 */
+        .dest-text { color: #fff; background: #333; padding: 0 3px; border-radius: 2px; } /* 行き先 */
 
         .sy-1 { background-color: #ff4c7c; }
         .sy-2 { background-color: #00b66a; }
@@ -79,7 +81,6 @@
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
-// 【最新提供座標データ：提供されたリストを完全反映】
 const posCoords = {
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
@@ -111,8 +112,19 @@ const posCoords = {
 };
 
 function getCarModel(sk) {
-    const models = { "2":"2000系", "5":"5000系", "7":"7000系", "8":"8000系", "9":"9000系", "0":"10-300形" };
+    const models = { "2":"2000", "5":"5000", "7":"7000", "8":"8000", "9":"9000", "0":"10-300" };
     return models[String(sk)] || "";
+}
+
+// 【新規】行き先コード変換
+function getDestName(ik) {
+    const destMap = {
+        "001":"新", "033":"N", "002":"笹", "003":"明", "006":"桜", "010":"烏", "012":"つ", "016":"調",
+        "018":"飛", "021":"東", "022":"府", "027":"高", "031":"北", "032":"八", "036":"馬", "037":"動",
+        "042":"尾", "043":"山", "048":"若", "050":"セ", "052":"沢", "054":"橋", "101":"市", "107":"岩",
+        "112":"住", "114":"島", "118":"瑞", "120":"本"
+    };
+    return destMap[String(ik)] || ik;
 }
 
 async function fetchUnyo() {
@@ -175,15 +187,19 @@ async function update() {
 
                     const model = getCarModel(p.sk);
                     const unyo = unyoMap[p.tr] || "--";
+                    const dest = getDestName(p.ik_tr);
+                    const sr = p.sr ? `${p.sr}両` : "";
                     const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
 
-                    // 方向判定：p.ki が "1" なら上り（右表示）、それ以外は下り（左表示）
                     const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
 
+                    // ラベルの中身：[形式] [運用] [両数] [行き先] [列番] [遅れ]
                     el.innerHTML = `
                         <div class="train-label ${dirClass}">
                             <span class="car-model">${model}</span>
                             <span class="unyo-no">${unyo}</span>
+                            <span class="car-sr">${sr}</span>
+                            <span class="dest-text">${dest}</span>
                             <span>${p.tr}</span>
                             ${delayHtml}
                         </div>`;
