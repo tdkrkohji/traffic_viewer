@@ -424,6 +424,18 @@ async function fetchAndRender(){
           const pos = posLabel(st.id);
           const sr = p.sr || "";
           const bs = p.bs || "";
+          // --- 追加: sk を表示用の形式に変換 ---
+          let skLabel = "";
+          // sk が存在する場合のみ判定
+          if (p.sk !== undefined && p.sk !== null) {
+            const skStr = String(p.sk);
+            if (skStr === "8") skLabel = "8000";
+            else if (skStr === "9") skLabel = "9000";
+            else if (skStr === "5") skLabel = "5000";
+            else if (skStr === "2") skLabel = "2000";
+            else if (skStr === "7") skLabel = "7000";
+            else if (skStr === "0") skLabel = "10-300";
+          }
           const dlNum = parseInt(p.dl,10) || 0;
           const dlLabel = (p.dl === "00" || dlNum === 0) ? "平常" : `${dlNum}分遅れ`;
 
