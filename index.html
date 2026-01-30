@@ -70,11 +70,30 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
 
 <header>
   <h1>運行中列車 <small style="font-size:0.7em;color:var(--muted)">v0.1.51</small></h1>
+  
+  <div style="margin: 10px 0;">
+    <a href="map.html" style="
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 16px;
+      background-color: var(--accent);
+      color: white;
+      text-decoration: none;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 14px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    ">
+      <span style="margin-right: 6px;">📍</span> ライブ配線図を表示
+    </a>
+  </div>
+
   <div id="meta">
     <div id="updateTime">データ更新: —</div>
     <div id="localTime">現在時刻: —</div>
   </div>
 </header>
+
 
 <div class="tab-bar">
   <button class="tab-btn active" data-line="keio">京王線</button>
