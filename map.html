@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>京王線 ライブ配線図モニター Ver.1.1</title>
+    <title> Ver.1.2</title>
     <script src="unyo_kt.js"></script>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
@@ -32,6 +32,7 @@
             display: flex; align-items: center; justify-content: center;
         }
 
+        /* 列車ラベル：1行表示の設定 */
         .train-label {
             position: absolute;
             top: 50%;
@@ -45,9 +46,9 @@
             z-index: 110;
         }
 
-        /* 方向別の位置指定：上りは右、下りは左 */
-        .label-nobori { left: 100%; margin-left: 8px; }  /* アイコンの右側 */
-        .label-kudari { right: 100%; margin-right: 8px; } /* アイコンの左側 */
+        /* 表示位置を左右逆に設定 */
+        .label-nobori { right: 100%; margin-right: 8px; } /* 上り：アイコンの左側 */
+        .label-kudari { left: 100%; margin-left: 8px; }  /* 下り：アイコンの右側 */
 
         .delay-text { color: #ff4444; font-weight: 900; }
         .car-model { color: #00ffcc; font-size: 9px; }
@@ -126,9 +127,8 @@ function getDestName(ik) {
     return destMap[String(ik)] || ik;
 }
 
-// 【アップデート】jsデータから運用番号を逆引きする関数
+// 運用番号（dataオブジェクト）から tr を参照して逆引き
 function getUnyoFromJS(trNo) {
-    // unyo_kt.js 内の 'data' 変数を走査
     if (typeof data === 'undefined') return null;
     for (const [unyoName, trainList] of Object.entries(data)) {
         if (trainList.includes(String(trNo))) {
@@ -138,35 +138,8 @@ function getUnyoFromJS(trNo) {
     return null;
 }
 
-async function fetchUnyo() {
-    let map = {};
-    // まず unyo_kt.js のデータ（変数data）からマップを作成
-    // ※動的な更新はされないが、初期値として有効
-    try {
-        const res = await fetch("toei.txt?" + Date.now());
-        if (!res.ok) return map;
-        const text = await res.text();
-        const lines = text.split(/\r?\n/);
-        let currentUnyo = "";
-        for (let line of lines) {
-            line = line.trim();
-            if (!line) continue;
-            if (/^\d+[TK]$/.test(line)) {
-                currentUnyo = line;
-            } else if (currentUnyo) {
-                line.split(',').forEach(tr => {
-                    const cleanTr = tr.trim();
-                    if (cleanTr) map[cleanTr] = currentUnyo;
-                });
-            }
-        }
-    } catch(e) { console.error("Unyo fetch error:", e); }
-    return map;
-}
-
 async function update() {
     try {
-        const unyoMap = await fetchUnyo();
         const res = await fetch(FEED_URL + "?" + Date.now());
         const json = await res.json();
         const layer = document.getElementById('trainLayer');
@@ -199,14 +172,12 @@ async function update() {
                     el.style.top = `${base.y}px`;
 
                     const model = getCarModel(p.sk);
-                    
-                    // 【修正点】運用番号の取得優先順位：toei.txt > unyo_kt.js
-                    const unyo = unyoMap[p.tr] || getUnyoFromJS(p.tr) || "--";
-                    
+                    const unyo = getUnyoFromJS(p.tr) || "--";
                     const dest = getDestName(p.ik_tr);
                     const sr = p.sr ? `${p.sr}両` : "";
                     const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
 
+                    // 方向判定：p.ki が "1" なら上り（左側表示）、それ以外は下り（右側表示）
                     const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
 
                     el.innerHTML = `
@@ -222,6 +193,7 @@ async function update() {
             });
         });
 
+        // 存在しなくなった列車の削除
         document.querySelectorAll('.train').forEach(el => {
             if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
         });
