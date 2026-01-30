@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="utf-8" />
-    <title>京王線 ライブ配線図 (新宿-明大前) 完全版</title>
+    <title>京王線 ライブ配線図モニター 完全版</title>
     <script src="unyo_kt.js"></script>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
@@ -19,13 +19,13 @@
         .car-model { color: #00ffcc; font-size: 9px; }
         .dest-text { background: #333; padding: 0 3px; border-radius: 2px; }
         .sy-1 { background-color: #ff4c7c; } .sy-2 { background-color: #00b66a; } .sy-3 { background-color: #0082ff; }
-        .sy-5 { background-color: #d8d100; color: #000; } .sy-6 { background-color: #888; }
+        .sy-5 { background-color: #d8d100; color: #000; } .sy-6 { background-color: #888; } .sy-9, .sy-11 { background-color: #c71585; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1 style="font-size:14px; margin:0;">京王線 運用モニター</h1>
+    <h1 style="font-size:14px; margin:0;">京王線 リアルタイム配線図 (新宿-明大前)</h1>
     <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">読込中...</div>
 </header>
 
@@ -37,9 +37,9 @@
 </div>
 
 <script>
-// --- 【全座標リスト】1つも漏らさず全て記述 ---
+// --- 【全座標リスト】一字一句漏らさず記述 ---
 const posCoords = {
-    // 新宿・新線新宿
+    // 新宿・新線新宿エリア
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
     "E002_1": {x: 680, y: 65},  "E002_2": {x: 680, y: 91},  "E002_3S": {x: 680, y: 120}, "E002_4": {x: 680, y: 146},
@@ -53,7 +53,7 @@ const posCoords = {
     "E003_1": {x: 893, y: 91},  "E003_2": {x: 893, y: 120},
     "D004":   {x: 976, y: 91},  "U003":   {x: 976, y: 120},
     "E004_1": {x: 1053, y: 91}, "E004_2": {x: 1053, y: 120},
-    // 笹塚・代田橋・明大前
+    // 笹塚・代田橋・明大前エリア
     "D005":   {x: 55,  y: 322}, "U004":   {x: 1145, y: 120},
     "E005_1": {x: 145, y: 322}, "E005_2": {x: 145, y: 351},
     "D006":   {x: 230, y: 322}, "U005":   {x: 230, y: 351},
@@ -82,10 +82,12 @@ function getDestName(ik) {
     return d[String(ik)] || ik;
 }
 
-// 運用を取得する (window.trToUnyoを優先し、ダメなら全スキャン)
+// 運用を取得する確実な関数
 function getUnyo(tr) {
     const trStr = String(tr);
+    // window.trToUnyoを優先的に見る
     if (window.trToUnyo && window.trToUnyo[trStr]) return window.trToUnyo[trStr];
+    // window.unyoDataをスキャン（保険）
     if (window.unyoData) {
         for (const [u, list] of Object.entries(window.unyoData)) {
             if (list.includes(trStr)) return u;
@@ -100,10 +102,10 @@ async function update() {
         const json = await res.json();
         const layer = document.getElementById('trainLayer');
         const activeIds = new Set();
-        const all = [...(json.TS || []), ...(json.TB || [])];
+        const allTrains = [...(json.TS || []), ...(json.TB || [])];
         const counter = {};
 
-        all.forEach(st => {
+        allTrains.forEach(st => {
             (st.ps || []).forEach(p => {
                 if (!p.tr) return;
                 const key = p.bs ? `${st.id}_${p.bs}` : st.id;
@@ -127,10 +129,12 @@ async function update() {
                     el.style.top = pos.y + "px";
 
                     const dir = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
+                    const unyo = getUnyo(p.tr);
+                    
                     el.innerHTML = `
                         <div class="train-label ${dir}">
                             <span class="car-model">${getCarModel(p.sk)}</span>
-                            <span class="unyo-no">${getUnyo(p.tr)}</span>
+                            <span class="unyo-no">${unyo}</span>
                             <span class="dest-text">${getDestName(p.ik_tr)}</span>
                             <span>${p.tr}</span>
                         </div>`;
