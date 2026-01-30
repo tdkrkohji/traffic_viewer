@@ -186,15 +186,15 @@ async function update() {
                     const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
 
                     el.innerHTML = `
-  <div class="train-label ${dirClass}">
-    <span class="car-model">${model}</span>
-    <span class="unyo-no">${unyo}</span>
-    <span class="car-sr">${sr}</span>
-    <span class="dest-text">${dest}</span>
-    <span>${p.tr}</span>
-    ${nextHtml}
-    ${delayHtml}
-  </div>
+                    <div class="train-label ${dirClass}">
+                      <span class="car-model">${model}</span>
+                      <span class="unyo-no">${unyo}</span>
+                      <span class="car-sr">${sr}</span>
+                      <span class="dest-text">${dest}</span>
+                      <span>${p.tr}</span>
+                      ${nextHtml}
+                      ${delayHtml}
+                    </div>
 `;
                 }
             });
