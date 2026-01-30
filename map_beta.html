@@ -3,72 +3,33 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title> Ver.1.2</title>
+    <title>京王線 ライブ配線図モニター Ver.1.3</title>
     <script src="unyo_kt.js"></script>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
-        
-        header {
-            height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9);
-            display: flex; align-items: center; border-bottom: 1px solid #333;
-            position: fixed; top: 0; width: 100%; z-index: 1000;
-        }
-
-        .map-wrapper {
-            position: absolute; top: 50px; bottom: 0; left: 0; right: 0;
-            overflow: auto; -webkit-overflow-scrolling: touch; background: #000;
-        }
-
+        header { height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9); display: flex; align-items: center; border-bottom: 1px solid #333; position: fixed; top: 0; width: 100%; z-index: 1000; }
+        .map-wrapper { position: absolute; top: 50px; bottom: 0; left: 0; right: 0; overflow: auto; background: #000; }
         .map-content { position: relative; width: 1200px; height: 675px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
-
-        .train {
-            position: absolute; width: 26px; height: 16px;
-            border-radius: 2px; border: 1.5px solid #fff;
-            transform: translate(-50%, -50%); z-index: 100;
-            transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 10px rgba(0,0,0,0.8);
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        /* 列車ラベル：1行表示の設定 */
-        .train-label {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(0,0,0,0.85); color: #fff;
-            padding: 2px 7px; border-radius: 4px;
-            font-size: 10px; font-weight: bold; white-space: nowrap;
-            display: flex; flex-direction: row; align-items: center; gap: 5px; 
-            border: 1px solid #444;
-            pointer-events: none;
-            z-index: 110;
-        }
-
-        /* 表示位置を左右逆に設定 */
-        .label-nobori { right: 100%; margin-right: 8px; } /* 上り：アイコンの左側 */
-        .label-kudari { left: 100%; margin-left: 8px; }  /* 下り：アイコンの右側 */
-
+        .train { position: absolute; width: 26px; height: 16px; border-radius: 2px; border: 1.5px solid #fff; transform: translate(-50%, -50%); z-index: 100; transition: all 1.5s; box-shadow: 0 0 10px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; }
+        .train-label { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; display: flex; flex-direction: row; align-items: center; gap: 5px; border: 1px solid #444; pointer-events: none; z-index: 110; }
+        .label-nobori { right: 100%; margin-right: 8px; }
+        .label-kudari { left: 100%; margin-left: 8px; }
         .delay-text { color: #ff4444; font-weight: 900; }
         .car-model { color: #00ffcc; font-size: 9px; }
         .unyo-no { color: #ffeb3b; }
         .car-sr { color: #aaa; font-size: 9px; } 
         .dest-text { color: #fff; background: #333; padding: 0 3px; border-radius: 2px; } 
-
-        .sy-1 { background-color: #ff4c7c; }
-        .sy-2 { background-color: #00b66a; }
-        .sy-3 { background-color: #0082ff; }
-        .sy-5 { background-color: #d8d100; color: #000; }
-        .sy-6 { background-color: #888; }
-        .sy-9, .sy-11 { background-color: #c71585; }
+        .sy-1 { background-color: #ff4c7c; } .sy-2 { background-color: #00b66a; } .sy-3 { background-color: #0082ff; }
+        .sy-5 { background-color: #d8d100; color: #000; } .sy-6 { background-color: #888; } .sy-9, .sy-11 { background-color: #c71585; }
     </style>
 </head>
 <body>
 
 <header>
     <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧に戻る</a>
-    <h1 style="font-size:14px; margin:0;">京王線 リアルタイム配線図 (新宿-明大前)</h1>
+    <h1 style="font-size:14px; margin:0;">京王線 ライブ配線図</h1>
     <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">接続中...</div>
 </header>
 
@@ -82,6 +43,7 @@
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
+// 座標設定 (E008_10 はそのまま維持)
 const posCoords = {
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
@@ -127,18 +89,27 @@ function getDestName(ik) {
     return destMap[String(ik)] || ik;
 }
 
-// 運用番号（dataオブジェクト）から tr を参照して逆引き
+// 運用データ(data)から逆引きする関数
 function getUnyoFromJS(trNo) {
-    if (typeof trToUnyo === "undefined") return null;
-    return trToUnyo[String(trNo)] || null;
-}
-
-function getNextTr(trNo) {
-    if (typeof trToNext === "undefined") return null;
-    return trToNext[String(trNo)] || null;
+    // dataが未定義（読み込み失敗）の場合は即終了
+    if (typeof data === 'undefined') return "ERROR";
+    
+    const targetTr = String(trNo).trim();
+    for (const [unyoName, trainList] of Object.entries(data)) {
+        if (trainList.includes(targetTr)) {
+            return unyoName;
+        }
+    }
+    return "--";
 }
 
 async function update() {
+    // data変数が読み込まれるまで待機
+    if (typeof data === 'undefined') {
+        document.getElementById('status').textContent = "運用データ読込中...";
+        return;
+    }
+
     try {
         const res = await fetch(FEED_URL + "?" + Date.now());
         const json = await res.json();
@@ -172,46 +143,29 @@ async function update() {
                     el.style.top = `${base.y}px`;
 
                     const model = getCarModel(p.sk);
-                    const unyo = getUnyoFromJS(p.tr) || "--";
-                    const nextTr = getNextTr(p.tr);
+                    // ★ここが肝：dataから直接運用を探す
+                    const unyo = getUnyoFromJS(p.tr);
+                    
                     const dest = getDestName(p.ik_tr);
                     const sr = p.sr ? `${p.sr}両` : "";
+                    const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
 
-                    const delayHtml = (p.dl && parseInt(p.dl) > 0)
-
-                        ? `<span class="delay-text">+${p.dl}</span>`
-
-                        : "";
-
-                    const nextHtml = nextTr
-
-                        ? `<span style="color:#58a6ff">→${nextTr}</span>`
-
-                        : "";
-
-                    // ★ dirClass は1回だけ！
-                    const dirClass = (String(p.ki) === "1")
-
-                        ? "label-nobori"
-
-                        : "label-kudari";
+                    // 方向：1=上り(左表示), その他=下り(右表示)
+                    const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
 
                     el.innerHTML = `
-                      <div class="train-label ${dirClass}">
-                      <span class="car-model">${model}</span>
-                      <span class="unyo-no">${unyo}</span>
-                      <span class="car-sr">${sr}</span>
-                      <span class="dest-text">${dest}</span>
-                      <span>${p.tr}</span>
-                      ${nextHtml}
-                      ${delayHtml}
-                    </div>
-                    `;
+                        <div class="train-label ${dirClass}">
+                            <span class="car-model">${model}</span>
+                            <span class="unyo-no">${unyo}</span>
+                            <span class="car-sr">${sr}</span>
+                            <span class="dest-text">${dest}</span>
+                            <span>${p.tr}</span>
+                            ${delayHtml}
+                        </div>`;
                 }
             });
         });
 
-        // 存在しなくなった列車の削除
         document.querySelectorAll('.train').forEach(el => {
             if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
         });
@@ -219,7 +173,8 @@ async function update() {
     } catch (e) { console.error(e); }
 }
 
-setInterval(update, 20000);
+// 実行タイミングの調整：2秒ごとに更新
+setInterval(update, 2000);
 update();
 </script>
 </body>
