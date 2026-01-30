@@ -220,6 +220,14 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
 </footer>
 
 <script>
+window.onerror = function(message, source, lineno, colno, error) {
+  alert(
+    "エラーが発生しました\n\n" +
+    message + "\n\n" +
+    "行番号: " + lineno
+  );
+};
+ 
 /* v0.1.3
    仕様変更（重要）:
    - 上下判定は「列車番号(tr) の数字部分の偶奇」
