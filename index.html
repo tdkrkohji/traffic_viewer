@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja" data-version="v0.1.50">
+<html lang="ja" data-version="v0.1.51">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — v0.1.50</title>
+<title>運行中列車 — v0.1.51</title>
 <style>
 /* 基本スタイル */
 :root{
@@ -69,7 +69,7 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
 <body>
 
 <header>
-  <h1>運行中列車 <small style="font-size:0.7em;color:var(--muted)">v0.1.50</small></h1>
+  <h1>運行中列車 <small style="font-size:0.7em;color:var(--muted)">v0.1.51</small></h1>
   <div id="meta">
     <div id="updateTime">データ更新: —</div>
     <div id="localTime">現在時刻: —</div>
@@ -143,10 +143,10 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
   <button id="themeBtn" class="control">ダークモード：切替</button>
 </div>
 
-<footer>v0.1.50</footer>
+<footer>v0.1.51</footer>
 
 <script>
-window.onerror = (m, s, l) => alert(`エラー: ${m}\n行: ${l}`);
+window.onerror = (m, s, l) => console.error(`Error: ${m} at ${l}`);
 
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
@@ -231,7 +231,14 @@ function bindSortable(table) {
       table.tHead.querySelectorAll("th").forEach(h => h.classList.remove("sorted-asc", "sorted-desc"));
       th.classList.add(asc ? "sorted-asc" : "sorted-desc");
       const rows = Array.from(table.tBodies[0].rows);
+      
       rows.sort((a, b) => {
+        // 現在位置(index: 5)の場合は、駅ID(dataset.trainId)で駅順ソート
+        if (idx === 5) {
+          const idA = a.dataset.trainId || "";
+          const idB = b.dataset.trainId || "";
+          return asc ? idA.localeCompare(idB) : idB.localeCompare(idA);
+        }
         const A = a.cells[idx].innerText, B = b.cells[idx].innerText;
         return asc ? A.localeCompare(B, "ja", { numeric: true }) : B.localeCompare(A, "ja", { numeric: true });
       });
@@ -292,7 +299,9 @@ async function fetchAndRender() {
         const unyoLabel = toeiMap[trNo] ? `<span style="color:#00a;font-weight:bold;margin-right:4px;">${toeiMap[trNo]}</span>` : "";
 
         const row = document.createElement("tr");
-        row.dataset.trainId = st.id; // ソート用
+        // st.id (例: E001, D016など) をソート用データとして保持
+        row.dataset.trainId = st.id || ""; 
+        
         row.innerHTML = `
           <td>${skToLabel(p.sk) || "-"}</td>
           <td>${unyoLabel}${trNo}</td>
@@ -325,12 +334,14 @@ async function fetchAndRender() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // 路線タブ切り替え
   document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     document.querySelectorAll(".line-block").forEach(lb => lb.style.display = "none");
     document.getElementById(btn.dataset.line).style.display = "block";
   }));
+  // 上下サブタブ切り替え
   document.querySelectorAll(".subtab").forEach(s => s.addEventListener("click", (e) => {
     const block = e.target.closest(".line-block");
     block.querySelectorAll(".subtab").forEach(x => x.classList.remove("active"));
@@ -338,11 +349,19 @@ document.addEventListener("DOMContentLoaded", () => {
     block.querySelectorAll(".table-wrap").forEach(w => w.style.display = "none");
     block.querySelector(`#${block.id}-${s.dataset.dir}-wrap`).style.display = "block";
   }));
+  // ダークモード
   document.getElementById("themeBtn").addEventListener("click", () => {
     document.documentElement.hasAttribute("data-theme") ? document.documentElement.removeAttribute("data-theme") : document.documentElement.setAttribute("data-theme", "dark");
   });
+  
   fetchAndRender();
-  setInterval(fetchAndRender, 30000);
+  // 更新間隔の反映
+  let intervalId = setInterval(fetchAndRender, 30000);
+  document.getElementById("intervalSelect").addEventListener("change", (e) => {
+    clearInterval(intervalId);
+    intervalId = setInterval(fetchAndRender, parseInt(e.target.value));
+  });
+
   setInterval(() => { document.getElementById("localTime").textContent = "現在時刻: " + new Date().toLocaleTimeString("ja-JP"); }, 1000);
 });
 </script>
