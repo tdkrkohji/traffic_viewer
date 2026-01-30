@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja" data-version="v0.1.49">
+<html lang="ja" data-version="v0.1.50">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — 京王・井の頭線</title>
+<title>運行中列車 — v0.1.50</title>
 <style>
 /* 基本スタイル */
 :root{
@@ -44,6 +44,7 @@ th,td{padding:8px 10px; border:1px solid var(--border); text-align:center; white
 th{background:transparent; cursor:pointer; font-weight:600}
 th.sorted-asc::after{content:" ▲"; font-weight:600}
 th.sorted-desc::after{content:" ▼"; font-weight:600}
+tr:hover td{background: rgba(0,0,0,0.03);}
 
 .badge{padding:4px 6px; border-radius:4px; display:inline-block}
 .tokkyu{background:var(--tokkyu); color:#fff}
@@ -68,7 +69,7 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
 <body>
 
 <header>
-  <h1>運行中列車 <small style="font-size:0.7em;color:var(--muted)">v0.1.49</small></h1>
+  <h1>運行中列車 <small style="font-size:0.7em;color:var(--muted)">v0.1.50</small></h1>
   <div id="meta">
     <div id="updateTime">データ更新: —</div>
     <div id="localTime">現在時刻: —</div>
@@ -89,7 +90,7 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
     <div class="table-wrap" id="keio-up-wrap">
       <table id="keio-up">
         <thead>
-          <tr><th>運用記号</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>
+          <tr><th data-key="sk">運用記号</th><th data-key="tr">列車番号</th><th data-key="ik">行先</th><th data-key="sy">種別</th><th data-key="sr">両数</th><th data-key="pos">現在位置</th><th data-key="bs">番線</th><th data-key="dl">遅れ</th><th data-key="remarks">備考</th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -97,7 +98,7 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
     <div class="table-wrap" id="keio-down-wrap" style="display:none;">
       <table id="keio-down">
         <thead>
-          <tr><th>運用記号</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>
+          <tr><th data-key="sk">運用記号</th><th data-key="tr">列車番号</th><th data-key="ik">行先</th><th data-key="sy">種別</th><th data-key="sr">両数</th><th data-key="pos">現在位置</th><th data-key="bs">番線</th><th data-key="dl">遅れ</th><th data-key="remarks">備考</th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -112,7 +113,7 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
     <div class="table-wrap" id="inok-up-wrap">
       <table id="inok-up">
         <thead>
-          <tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>
+          <tr><th data-key="sk">上下</th><th data-key="tr">列車番号</th><th data-key="ik">行先</th><th data-key="sy">種別</th><th data-key="sr">両数</th><th data-key="pos">現在位置</th><th data-key="bs">番線</th><th data-key="dl">遅れ</th><th data-key="remarks">備考</th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -120,7 +121,7 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
     <div class="table-wrap" id="inok-down-wrap" style="display:none;">
       <table id="inok-down">
         <thead>
-          <tr><th>上下</th><th>列車番号</th><th>行先</th><th>種別</th><th>両数</th><th>現在位置</th><th>番線</th><th>遅れ</th><th>備考</th></tr>
+          <tr><th data-key="sk">上下</th><th data-key="tr">列車番号</th><th data-key="ik">行先</th><th data-key="sy">種別</th><th data-key="sr">両数</th><th data-key="pos">現在位置</th><th data-key="bs">番線</th><th data-key="dl">遅れ</th><th data-key="remarks">備考</th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -142,9 +143,11 @@ footer{margin-top:30px; text-align:center; color:var(--muted); font-size:13px}
   <button id="themeBtn" class="control">ダークモード：切替</button>
 </div>
 
-<footer>v0.1.49</footer>
+<footer>v0.1.50</footer>
 
 <script>
+window.onerror = (m, s, l) => alert(`エラー: ${m}\n行: ${l}`);
+
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
 const idMap = {
@@ -173,7 +176,7 @@ const syMap = {
   11:{name:"ライナー", cls:"linermt"}
 };
 
-function to3(num) { return String(num).padStart(3, '0'); }
+const to3 = (n) => String(n).padStart(3, '0');
 
 function updownFromTrain(tr, stId) {
   const num = parseInt(tr.replace(/\D/g, ""), 10);
@@ -219,9 +222,27 @@ function addNotifUnique(type, text) {
   }
 }
 
+/* --- ソート機能 --- */
+function bindSortable(table) {
+  if (!table || table._bound) return;
+  table.tHead.querySelectorAll("th").forEach((th, idx) => {
+    th.addEventListener("click", () => {
+      const asc = !th.classList.contains("sorted-asc");
+      table.tHead.querySelectorAll("th").forEach(h => h.classList.remove("sorted-asc", "sorted-desc"));
+      th.classList.add(asc ? "sorted-asc" : "sorted-desc");
+      const rows = Array.from(table.tBodies[0].rows);
+      rows.sort((a, b) => {
+        const A = a.cells[idx].innerText, B = b.cells[idx].innerText;
+        return asc ? A.localeCompare(B, "ja", { numeric: true }) : B.localeCompare(A, "ja", { numeric: true });
+      });
+      rows.forEach(r => table.tBodies[0].appendChild(r));
+    });
+  });
+  table._bound = true;
+}
+
 async function fetchAndRender() {
   try {
-    // Toei運用データの読み込み
     let toeiMap = {};
     try {
       const tRes = await fetch("toei.txt");
@@ -234,7 +255,7 @@ async function fetchAndRender() {
           else if (line) line.split(",").forEach(tr => toeiMap[tr.trim()] = currentUnyo);
         });
       }
-    } catch(e) { console.warn("toei.txt not found"); }
+    } catch(e) {}
 
     const res = await fetch(FEED_URL + "?cache=" + Date.now());
     const data = await res.json();
@@ -266,11 +287,12 @@ async function fetchAndRender() {
         if (sy.name === "特急" && p.sr === "8") remarks.push("特急(8両)");
         if (trainCount[trNo] > 1) { remarks.push("車両交換予定"); addNotifUnique("exchange", `${trNo}:車両交換予定`); }
         if (parseInt(p.ik_tr) >= 101 && parseInt(p.ik_tr) <= 120) remarks.push("都営直通");
+        if (dlNum >= 15) addNotifUnique("delay", `${trNo}: ${dlNum}分遅れ`);
 
-        // 運用記号の表示（toei.txtにデータがあれば青文字で表示）
         const unyoLabel = toeiMap[trNo] ? `<span style="color:#00a;font-weight:bold;margin-right:4px;">${toeiMap[trNo]}</span>` : "";
 
         const row = document.createElement("tr");
+        row.dataset.trainId = st.id; // ソート用
         row.innerHTML = `
           <td>${skToLabel(p.sk) || "-"}</td>
           <td>${unyoLabel}${trNo}</td>
@@ -286,7 +308,6 @@ async function fetchAndRender() {
       });
     });
 
-    // 通知表示
     const alertsOut = document.getElementById("alertsInner");
     const obj = loadNotifs();
     if (obj.list.length) {
@@ -298,6 +319,7 @@ async function fetchAndRender() {
         alertsOut.appendChild(d);
       });
     }
+    Object.keys(bodies).forEach(id => bindSortable(document.getElementById(id)));
 
   } catch (err) { console.error(err); }
 }
