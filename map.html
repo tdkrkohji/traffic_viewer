@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>京王線 ライブモニター 完全版</title>
+    <title>京王線 ライブ配線図モニター Ver.1.0</title>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
@@ -16,43 +16,54 @@
 
         .map-wrapper {
             position: absolute; top: 50px; bottom: 0; left: 0; right: 0;
-            overflow: auto; background: #000;
+            overflow: auto; -webkit-overflow-scrolling: touch; background: #000;
         }
 
+        /* 1200x675固定 */
         .map-content { position: relative; width: 1200px; height: 675px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
 
+        /* 列車アイコン本体 */
         .train {
             position: absolute; width: 26px; height: 16px;
             border-radius: 2px; border: 1.5px solid #fff;
             transform: translate(-50%, -50%); z-index: 100;
-            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 8px rgba(0,0,0,0.8);
+            transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.8);
             display: flex; align-items: center; justify-content: center;
         }
 
+        /* 詳細情報ラベル */
         .train-label {
-            position: absolute; top: -26px;
+            position: absolute; top: -38px;
             background: rgba(0,0,0,0.85); color: #fff;
-            padding: 2px 6px; border-radius: 4px;
+            padding: 3px 6px; border-radius: 4px;
             font-size: 10px; font-weight: bold; white-space: nowrap;
-            border: 1px solid #444; pointer-events: none;
-            display: flex; gap: 5px; align-items: center;
+            display: flex; flex-direction: column; align-items: center;
+            line-height: 1.3; border: 1px solid #444;
+            pointer-events: none;
         }
 
-        .delay-text { color: #ff4444; font-weight: 900; }
+        .label-row { display: flex; gap: 6px; align-items: center; }
+        .delay-text { color: #ff4444; font-weight: 900; } /* 遅れは赤 */
+        .car-model { color: #00ffcc; font-size: 9px; }
+        .unyo-no { color: #ffeb3b; } /* 運用番号(1T/81Kなど)は目立つ黄色 */
 
-        /* 種別色設定 */
-        .sy-1 { background-color: #ff4c7c; } .sy-2 { background-color: #00b66a; } 
-        .sy-3 { background-color: #0082ff; } .sy-5 { background-color: #d8d100; color: #000; } 
-        .sy-6 { background-color: #888; }    .sy-9, .sy-11 { background-color: #c71585; } 
+        /* 種別カラー設定 */
+        .sy-1 { background-color: #ff4c7c; } /* 特急 */
+        .sy-2 { background-color: #00b66a; } /* 急行 */
+        .sy-3 { background-color: #0082ff; } /* 快速 */
+        .sy-5 { background-color: #d8d100; color: #000; } /* 区急 */
+        .sy-6 { background-color: #888; }    /* 各停 */
+        .sy-9, .sy-11 { background-color: #c71585; } /* ライナー */
     </style>
 </head>
 <body>
 
 <header>
-    <h1 style="font-size:14px; margin:0;">京王線 ライブモニター</h1>
-    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">データ取得中...</div>
+    <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧に戻る</a>
+    <h1 style="font-size:14px; margin:0;">京王線 リアルタイム配線図 (新宿-明大前)</h1>
+    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">接続中...</div>
 </header>
 
 <div class="map-wrapper">
@@ -65,107 +76,118 @@
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
-// 【最新提供分：全座標マッピングデータ】
+// 修正された正確な座標リスト
 const posCoords = {
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
-    "E002_1": {x: 680, y: 65},  "E002_2": {x: 680, y: 91},  "E002_3": {x: 680, y: 120}, "E002_4": {x: 680, y: 146},
+    "E002_1": {x: 680, y: 65},  "E002_2": {x: 680, y: 91}, "E002_3": {x: 680, y: 120}, "E002_4": {x: 680, y: 146},
     "E033_4": {x: 149, y: 91},  "E033_5": {x: 149, y: 119},
     "D034":   {x: 295, y: 91},  "U033":   {x: 295, y: 120},
     "E034_1": {x: 367, y: 91},  "E034_2": {x: 367, y: 120},
     "D035":   {x: 430, y: 91},  "U034":   {x: 430, y: 120},
     "E035_1": {x: 490, y: 91},  "E035_2": {x: 490, y: 120},
-    "S002":   {x: 600, y: 91},  "U035":   {x: 600, y: 120}, // 最新指示(65/145)を反映
+    "S002":   {x: 600, y: 91},  "U035":   {x: 600, y: 120},
     "D003":   {x: 785, y: 65},  "U002":   {x: 785, y: 146},
     "E003_1": {x: 893, y: 91},  "E003_2": {x: 893, y: 120},
     "D004":   {x: 976, y: 91},  "U003":   {x: 976, y: 120},
-    "E004_1": {x: 1053, y: 91}, "E004_2": {x: 1053, y: 120},
-    "D005":   {x: 55,  y: 322}, "U004":   {x: 1145, y: 120},
-    "E005_1": {x: 145, y: 322}, "E005_2": {x: 145, y: 351},
-    "D006":   {x: 230, y: 322}, "U005":   {x: 230, y: 351},
-    "E006_1": {x: 337, y: 294}, "E006_2": {x: 337, y: 322}, "E006_3": {x: 337, y: 351}, "E006_4": {x: 337, y: 378},
-    "D007":   {x: 419, y: 322}, "U006":   {x: 419, y: 351},
-    "E007_1": {x: 479, y: 322}, "E007_2": {x: 479, y: 351},
-    "D008":   {x: 549, y: 322}, "U007":   {x: 549, y: 351},
-    "E008_0": {x: 630, y: 294}, "E008_1": {x: 630, y: 310}, "E008_2": {x: 630, y: 336}, "E008_3": {x: 630, y: 351},
-    "D009":   {x: 729, y: 322}, "U008":   {x: 729, y: 351},
-    "E009_1": {x: 788, y: 322}, "E009_2": {x: 788, y: 351},
-    "D010":   {x: 871, y: 322}, "U009":   {x: 871, y: 351},
-    "E010_1": {x: 950, y: 322}, "E010_2": {x: 950, y: 351},
-    "D011":   {x: 1033, y: 322}, "U010":  {x: 1033, y: 351},
-    "E011_1": {x: 1122, y: 322}, "E011_2": {x: 1122, y: 351}
+    "E004_1": {x: 1053, y: 91}, "E004_2": {x: 1053, y: 120}
 };
 
+// sk(車両区分)による形式名変換
 function getCarModel(sk) {
-    const models = { "2":"2000", "5":"5000", "7":"7000", "8":"8000", "9":"9000", "0":"10-300" };
+    const models = { "2":"2000系", "5":"5000系", "7":"7000系", "8":"8000系", "9":"9000系", "0":"10-300形" };
     return models[String(sk)] || "";
+}
+
+// toei.txtの解析 (運用番号[TK]の次行に列車番号がある形式に対応)
+async function fetchUnyo() {
+    let map = {};
+    try {
+        const res = await fetch("toei.txt?" + Date.now());
+        if (!res.ok) return map;
+        const text = await res.text();
+        const lines = text.split(/\r?\n/);
+        let currentUnyo = "";
+
+        for (let line of lines) {
+            line = line.trim();
+            if (!line) continue;
+            // 運用番号の行 (例: 81K)
+            if (/^\d+[TK]$/.test(line)) {
+                currentUnyo = line;
+            } 
+            // 列車番号リストの行 (例: 2720, ...)
+            else if (currentUnyo) {
+                line.split(',').forEach(tr => {
+                    const cleanTr = tr.trim();
+                    if (cleanTr) map[cleanTr] = currentUnyo;
+                });
+            }
+        }
+    } catch(e) { console.error("Unyo fetch error:", e); }
+    return map;
 }
 
 async function update() {
     try {
+        const unyoMap = await fetchUnyo();
         const res = await fetch(FEED_URL + "?" + Date.now());
         const data = await res.json();
+        
         const layer = document.getElementById('trainLayer');
         const activeIds = new Set();
         const allTrains = [...(data.TS || []), ...(data.TB || [])];
-        const posCounter = {};
+        const posCounter = {}; // 重複検知用
 
         allTrains.forEach(st => {
             (st.ps || []).forEach(p => {
                 if (!p.tr) return;
-                
-                // 駅IDと番線IDから座標キーを作成
                 const key = p.bs ? `${st.id}_${p.bs}` : st.id;
-                const base = posCoords[key];
+                const base = posCoords[key] || posCoords[st.id];
 
                 if (base) {
-                    const trId = String(p.tr);
-                    activeIds.add(trId);
+                    activeIds.add(p.tr);
                     
-                    // 重なり防止
+                    // 重複回避ロジック: 同一座標なら右に10pxずつずらす
                     const cKey = `${base.x}_${base.y}`;
-                    const offset = (posCounter[cKey] || 0) * 12;
+                    const offset = (posCounter[cKey] || 0) * 10;
                     posCounter[cKey] = (posCounter[cKey] || 0) + 1;
 
-                    let el = document.getElementById(`tr-${trId}`);
+                    let el = document.getElementById(`tr-${p.tr}`);
                     if (!el) {
                         el = document.createElement('div');
-                        el.id = `tr-${trId}`;
+                        el.id = `tr-${p.tr}`;
                         el.className = 'train';
                         layer.appendChild(el);
                     }
-
+                    
                     el.className = `train sy-${p.sy || '6'}`;
                     el.style.left = `${base.x + offset}px`;
                     el.style.top = `${base.y}px`;
 
                     const model = getCarModel(p.sk);
+                    const unyo = unyoMap[p.tr] || "--";
                     const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
 
                     el.innerHTML = `
                         <div class="train-label">
-                            <span>${model}</span>
-                            <span>${trId}</span>
-                            ${delayHtml}
+                            <div class="label-row"><span class="car-model">${model}</span><span class="unyo-no">${unyo}</span></div>
+                            <div class="label-row"><span>${p.tr}</span>${delayHtml}</div>
                         </div>`;
                 }
             });
         });
 
-        // 存在しない列車を消去
+        // データから消えた列車を削除
         document.querySelectorAll('.train').forEach(el => {
-            const id = el.id.replace('tr-', '');
-            if (!activeIds.has(id)) el.remove();
+            if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
         });
-
-        document.getElementById('status').textContent = "更新: " + new Date().toLocaleTimeString();
-    } catch (e) {
-        console.error(e);
-        document.getElementById('status').textContent = "取得エラー";
-    }
+        document.getElementById('status').textContent = "最終更新: " + new Date().toLocaleTimeString();
+    } catch (e) { console.error(e); }
 }
 
-setInterval(update, 15000);
+// 20秒おきに自動更新
+setInterval(update, 20000);
 update();
 </script>
 </body>
