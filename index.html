@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja" data-version="v0.1.37">
+<html lang="ja" data-version="v0.1.40">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>運行中列車 — v0.1.39</title>
+<title>運行中列車 — v0.1.40</title>
 <style>
 /* 基本スタイル（GitHub風・レスポンシブ） */
 :root{
@@ -300,7 +300,21 @@ function updownFromTrain(tr, stId){
   }
   return "不明";
 }
+// sk を表示用の文字列に変換
+function skToLabel(sk){
+  if (sk === undefined || sk === null) return "";
 
+  const n = Number(sk);
+
+  if (n === 8) return "8000";
+  if (n === 9) return "9000";
+  if (n === 5) return "5000";
+  if (n === 2) return "2000";
+  if (n === 7) return "7000";
+  if (n === 0) return "10-300";
+
+  return "";
+}
 /* ik_tr の数値が 55〜100 の時のみ 井の頭線(inok) 扱い */
 function classifyLineByIk(ik_tr){
   const ikNum = parseInt(String(ik_tr).replace(/\D/g,""),10);
@@ -414,6 +428,7 @@ async function fetchAndRender(){
         (st.ps || []).forEach(p => {
           const trNo = (p.tr || "").trim();
           if(!trNo) return;
+          const skLabel = skToLabel(p.sk);
           const ik_raw = p.ik_tr;
           const ikNum = parseInt(String(ik_raw).replace(/\D/g,""),10);
           const line = classifyLineByIk(ik_raw); // 新ルール: ik_tr 55~100 -> inok
