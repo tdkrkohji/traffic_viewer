@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="utf-8" />
@@ -76,11 +76,11 @@
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 
-// 修正された正確な座標リスト
+// 【最新提供座標データ：漏れなく反映】
 const posCoords = {
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
-    "E002_1": {x: 680, y: 65},  "E002_2": {x: 680, y: 91}, "E002_3": {x: 680, y: 120}, "E002_4": {x: 680, y: 146},
+    "E002_1": {x: 680, y: 65},  "E002_2": {x: 680, y: 91},  "E002_3": {x: 680, y: 120}, "E002_4": {x: 680, y: 146},
     "E033_4": {x: 149, y: 91},  "E033_5": {x: 149, y: 119},
     "D034":   {x: 295, y: 91},  "U033":   {x: 295, y: 120},
     "E034_1": {x: 367, y: 91},  "E034_2": {x: 367, y: 120},
@@ -90,7 +90,21 @@ const posCoords = {
     "D003":   {x: 785, y: 65},  "U002":   {x: 785, y: 146},
     "E003_1": {x: 893, y: 91},  "E003_2": {x: 893, y: 120},
     "D004":   {x: 976, y: 91},  "U003":   {x: 976, y: 120},
-    "E004_1": {x: 1053, y: 91}, "E004_2": {x: 1053, y: 120}
+    "E004_1": {x: 1053, y: 91}, "E004_2": {x: 1053, y: 120},
+    "D005":   {x: 55,  y: 322}, "U004":   {x: 1145, y: 120},
+    "E005_1": {x: 145, y: 322}, "E005_2": {x: 145, y: 351},
+    "D006":   {x: 230, y: 322}, "U005":   {x: 230, y: 351},
+    "E006_1": {x: 337, y: 294}, "E006_2": {x: 337, y: 322}, "E006_3": {x: 337, y: 351}, "E006_4": {x: 337, y: 378},
+    "D007":   {x: 419, y: 322}, "U006":   {x: 419, y: 351},
+    "E007_1": {x: 479, y: 322}, "E007_2": {x: 479, y: 351},
+    "D008":   {x: 549, y: 322}, "U007":   {x: 549, y: 351},
+    "E008_0": {x: 630, y: 294}, "E008_1": {x: 630, y: 310}, "E008_2": {x: 630, y: 336}, "E008_3": {x: 630, y: 351},
+    "D009":   {x: 729, y: 322}, "U008":   {x: 729, y: 351},
+    "E009_1": {x: 788, y: 322}, "E009_2": {x: 788, y: 351},
+    "D010":   {x: 871, y: 322}, "U009":   {x: 871, y: 351},
+    "E010_1": {x: 950, y: 322}, "E010_2": {x: 950, y: 351},
+    "D011":   {x: 1033, y: 322}, "U010":  {x: 1033, y: 351},
+    "E011_1": {x: 1122, y: 322}, "E011_2": {x: 1122, y: 351}
 };
 
 // sk(車両区分)による形式名変換
@@ -99,7 +113,7 @@ function getCarModel(sk) {
     return models[String(sk)] || "";
 }
 
-// toei.txtの解析 (運用番号[TK]の次行に列車番号がある形式に対応)
+// toei.txtの解析
 async function fetchUnyo() {
     let map = {};
     try {
@@ -112,12 +126,9 @@ async function fetchUnyo() {
         for (let line of lines) {
             line = line.trim();
             if (!line) continue;
-            // 運用番号の行 (例: 81K)
             if (/^\d+[TK]$/.test(line)) {
                 currentUnyo = line;
-            } 
-            // 列車番号リストの行 (例: 2720, ...)
-            else if (currentUnyo) {
+            } else if (currentUnyo) {
                 line.split(',').forEach(tr => {
                     const cleanTr = tr.trim();
                     if (cleanTr) map[cleanTr] = currentUnyo;
@@ -137,7 +148,7 @@ async function update() {
         const layer = document.getElementById('trainLayer');
         const activeIds = new Set();
         const allTrains = [...(data.TS || []), ...(data.TB || [])];
-        const posCounter = {}; // 重複検知用
+        const posCounter = {};
 
         allTrains.forEach(st => {
             (st.ps || []).forEach(p => {
@@ -148,7 +159,6 @@ async function update() {
                 if (base) {
                     activeIds.add(p.tr);
                     
-                    // 重複回避ロジック: 同一座標なら右に10pxずつずらす
                     const cKey = `${base.x}_${base.y}`;
                     const offset = (posCounter[cKey] || 0) * 10;
                     posCounter[cKey] = (posCounter[cKey] || 0) + 1;
@@ -178,7 +188,6 @@ async function update() {
             });
         });
 
-        // データから消えた列車を削除
         document.querySelectorAll('.train').forEach(el => {
             if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
         });
@@ -186,7 +195,6 @@ async function update() {
     } catch (e) { console.error(e); }
 }
 
-// 20秒おきに自動更新
 setInterval(update, 20000);
 update();
 </script>
