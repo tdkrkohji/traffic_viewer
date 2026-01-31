@@ -7,25 +7,55 @@
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
-        header { height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9); display: flex; align-items: center; border-bottom: 1px solid #333; position: fixed; top: 0; width: 100%; z-index: 1000; }
-        .map-wrapper { position: absolute; top: 50px; bottom: 0; left: 0; right: 0; overflow: auto; -webkit-overflow-scrolling: touch; background: #000; }
+        
+        header {
+            height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9);
+            display: flex; align-items: center; border-bottom: 1px solid #333;
+            position: fixed; top: 0; width: 100%; z-index: 1000;
+        }
+
+        .map-wrapper {
+            position: absolute; top: 50px; bottom: 0; left: 0; right: 0;
+            overflow: auto; -webkit-overflow-scrolling: touch; background: #000;
+        }
+
         .map-content { position: relative; width: 1200px; height: 675px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
-        .train { position: absolute; width: 26px; height: 16px; border-radius: 2px; border: 1.5px solid #fff; transform: translate(-50%, -50%); z-index: 100; transition: all 1.5s linear; box-shadow: 0 0 10px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; }
-        .train-label { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; display: flex; flex-direction: row; align-items: center; gap: 5px; border: 1px solid #444; pointer-events: none; z-index: 110; }
+
+        .train {
+            position: absolute; width: 26px; height: 16px;
+            border-radius: 2px; border: 1.5px solid #fff;
+            transform: translate(-50%, -50%); z-index: 100;
+            transition: all 1.5s linear;
+            box-shadow: 0 0 10px rgba(0,0,0,0.8);
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .train-label {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            background: rgba(0,0,0,0.85); color: #fff; padding: 2px 7px;
+            border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap;
+            display: flex; flex-direction: row; align-items: center; gap: 5px;
+            border: 1px solid #444; pointer-events: none; z-index: 110;
+        }
+
         .label-nobori { right: 100%; margin-right: 8px; }
         .label-kudari { left: 100%; margin-left: 8px; }
+
         .unyo-no { color: #ffeb3b; }
         .dest-text { color: #fff; background: #333; padding: 0 3px; border-radius: 2px; }
-        .sy-1 { background-color: #ff4c7c; } .sy-2 { background-color: #00b66a; } .sy-3 { background-color: #0082ff; }
-        .sy-5 { background-color: #d8d100; color: #000; } .sy-6 { background-color: #888; } .sy-9, .sy-11 { background-color: #c71585; }
+
+        /* 種別色設定 */
+        .sy-1 { background-color: #ff4c7c; } .sy-2 { background-color: #00b66a; }
+        .sy-3 { background-color: #0082ff; } .sy-5 { background-color: #d8d100; color: #000; }
+        .sy-6 { background-color: #888; }    .sy-9, .sy-11 { background-color: #c71585; }
     </style>
 </head>
 <body>
 
 <header>
     <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧に戻る</a>
-    <h1 style="font-size:14px; margin:0;">京王線 配線図 (新宿-調布)</h1>
+    <h1 style="font-size:14px; margin:0;">新宿-調布 リアルタイム配線図</h1>
     <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">接続中...</div>
 </header>
 
@@ -38,7 +68,8 @@
 
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
-const UNYO_TXT_URL = "unyo/h/8R.txt";
+// 読み込む運用ファイルのリスト
+const UNYO_FILES = ["unyo/h/8R.txt"]; 
 
 const posCoords = {
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
@@ -82,42 +113,56 @@ const posCoords = {
 
 let unyoMap = {};
 
-async function fetchUnyo() {
-    try {
-        const res = await fetch(UNYO_TXT_URL + "?" + Date.now());
-        const text = await res.text();
-        const lines = text.split(/\r?\n/);
-        let trains = [];
-        const newMap = {};
-        lines.forEach(line => {
-            const l = line.trim();
-            if (l.includes('［')) {
-                trains = l.replace(/[［］]/g, '').split(',');
-            } else if (l.startsWith('=')) {
-                const u = l.substring(1);
-                trains.forEach(t => { if(t) newMap[t.trim()] = u; });
-            }
-        });
-        unyoMap = newMap;
-    } catch (e) { console.error("Unyo Load Error", e); }
+// 運用ファイルを読み込み解析する
+async function fetchAllUnyo() {
+    const newMap = {};
+    for (const url of UNYO_FILES) {
+        try {
+            const res = await fetch(url + "?" + Date.now());
+            if (!res.ok) continue;
+            const text = await res.text();
+            const lines = text.split(/\r?\n/);
+            let currentTrains = [];
+
+            lines.forEach(line => {
+                const l = line.trim();
+                if (!l) return;
+                // 列車番号リストの抽出
+                if (l.includes('［') || l.includes('[')) {
+                    currentTrains = l.replace(/[［］\[\]]/g, '').split(',');
+                } 
+                // 運用番号の抽出とマッピング
+                else if (l.startsWith('=')) {
+                    const u = l.substring(1).trim();
+                    currentTrains.forEach(t => {
+                        const tr = t.trim();
+                        if (tr) newMap[tr] = u;
+                    });
+                    currentTrains = [];
+                }
+            });
+        } catch (e) { console.error("File error:", url, e); }
+    }
+    unyoMap = newMap;
 }
 
 function getDestName(ik) {
-    const d = {"001":"新","002":"笹","003":"明","006":"桜","016":"調","022":"府","032":"八","054":"橋","120":"本"};
+    const d = {"001":"新","002":"笹","003":"明","006":"桜","010":"烏","012":"つ","016":"調","022":"府","032":"八","054":"橋","120":"本"};
     return d[String(ik)] || ik;
 }
 
 async function update() {
-    await fetchUnyo(); // 運用テキストを毎回更新
+    await fetchAllUnyo(); // 毎回最新の運用情報を取得
+    
     try {
         const res = await fetch(FEED_URL + "?" + Date.now());
         const json = await res.json();
         const layer = document.getElementById('trainLayer');
         const activeIds = new Set();
-        const all = [...(json.TS || []), ...(json.TB || [])];
+        const allTrains = [...(json.TS || []), ...(json.TB || [])];
         const counter = {};
 
-        all.forEach(st => {
+        allTrains.forEach(st => {
             (st.ps || []).forEach(p => {
                 if (!p.tr) return;
                 const key = p.bs ? `${st.id}_${p.bs}` : st.id;
@@ -126,7 +171,7 @@ async function update() {
                 if (base) {
                     activeIds.add(p.tr);
                     const cKey = `${base.x}_${base.y}`;
-                    const offset = (counter[cKey] || 0) * 12; // 重なり防止
+                    const offset = (counter[cKey] || 0) * 12;
                     counter[cKey] = (counter[cKey] || 0) + 1;
 
                     let el = document.getElementById(`tr-${p.tr}`);
@@ -143,25 +188,27 @@ async function update() {
 
                     const unyo = unyoMap[String(p.tr)] || "--";
                     const dest = getDestName(p.ik_tr);
-                    const dir = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
+                    const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
 
-                    el.innerHTML = `<div class="train-label ${dir}">
-                        <span class="unyo-no">${unyo}</span>
-                        <span class="dest-text">${dest}</span>
-                        <span>${p.tr}</span>
-                    </div>`;
+                    el.innerHTML = `
+                        <div class="train-label ${dirClass}">
+                            <span class="unyo-no">${unyo}</span>
+                            <span class="dest-text">${dest}</span>
+                            <span>${p.tr}</span>
+                        </div>`;
                 }
             });
         });
 
-        // 存在しなくなった列車を削除
+        // 画面外に去った電車を削除
         document.querySelectorAll('.train').forEach(el => {
             if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
         });
-        document.getElementById('status').textContent = "更新: " + new Date().toLocaleTimeString();
+        document.getElementById('status').textContent = "最終更新: " + new Date().toLocaleTimeString();
     } catch (e) { console.error(e); }
 }
 
+// 20秒間隔でリフレッシュ
 setInterval(update, 20000);
 update();
 </script>
