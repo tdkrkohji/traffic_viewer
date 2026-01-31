@@ -114,6 +114,7 @@ const posCoords = {
 let unyoMap = {};
 
 // 運用ファイルを読み込み解析する
+// --- fetchAllUnyo 関数の強化版 ---
 async function fetchAllUnyo() {
     const newMap = {};
     for (const url of UNYO_FILES) {
@@ -121,30 +122,63 @@ async function fetchAllUnyo() {
             const res = await fetch(url + "?" + Date.now());
             if (!res.ok) continue;
             const text = await res.text();
+            
+            // 改行で分割し、1行ずつ処理
             const lines = text.split(/\r?\n/);
             let currentTrains = [];
 
             lines.forEach(line => {
                 const l = line.trim();
                 if (!l) return;
-                // 列車番号リストの抽出
+
+                // 列車番号リストの行を解析
                 if (l.includes('［') || l.includes('[')) {
-                    currentTrains = l.replace(/[［］\[\]]/g, '').split(',');
+                    // 括弧を取り除き、カンマで分割。各番号を徹底的に掃除(trim)
+                    currentTrains = l.replace(/[［］\[\]]/g, '')
+                                     .split(',')
+                                     .map(t => t.trim())
+                                     .filter(t => t !== "");
                 } 
-                // 運用番号の抽出とマッピング
+                // 運用番号の行を解析
                 else if (l.startsWith('=')) {
                     const u = l.substring(1).trim();
-                    currentTrains.forEach(t => {
-                        const tr = t.trim();
-                        if (tr) newMap[tr] = u;
+                    currentTrains.forEach(tr => {
+                        // 列車番号をキーにして運用番号を保存
+                        newMap[tr] = u;
                     });
-                    currentTrains = [];
+                    currentTrains = []; // リセット
                 }
             });
         } catch (e) { console.error("File error:", url, e); }
     }
     unyoMap = newMap;
+    // デバッグ用: コンソールに読み込んだ件数を表示
+    console.log("読み込み完了: " + Object.keys(unyoMap).length + "件の列車を登録しました");
 }
+
+// --- update 関数内の運用番号取得部分を強化 ---
+// (update関数の中の p.tr を使っている部分を以下に差し替え)
+
+const trRaw = p.tr; // APIから来た生の番号
+// 4桁・5桁の違いなどを吸収するために掃除
+const trNo = String(trRaw).trim();
+
+// 1. そのまま検索
+let unyo = unyoMap[trNo];
+
+// 2. 見つからない場合、先頭の0を取って検索 (例: "05001" -> "5001")
+if (!unyo && trNo.startsWith('0')) {
+    unyo = unyoMap[trNo.substring(1)];
+}
+
+// 3. それでも見つからない場合、逆に先頭に0を足して検索 (例: "5001" -> "05001")
+if (!unyo) {
+    unyo = unyoMap['0' + trNo];
+}
+
+// 最終的に見つからなければ "--"
+const displayUnyo = unyo || "--";
+
 
 function getDestName(ik) {
     const d = {"001":"新","002":"笹","003":"明","006":"桜","010":"烏","012":"つ","016":"調","022":"府","032":"八","054":"橋","120":"本"};
