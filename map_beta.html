@@ -91,32 +91,16 @@ const posCoords = {
 let unyoMap8R = {}; // 8R.txtの内容を格納する用
 
 // 8R.txtを取得して解析する関数
+// テスト用の動作確認関数（GitHubから読み込まず、直接データをセットする）
 async function fetchUnyoData() {
-    try {
-        const res = await fetch(UNYO_TXT_URL + "?" + Date.now());
-        const text = await res.text();
-        const lines = text.split('\n');
-        let currentTrains = [];
-        const newMap = {};
-
-        lines.forEach(line => {
-            const trimmed = line.trim();
-            if (trimmed.startsWith('［')) {
-                // 列番リストの抽出: 「［5600,5001...］」から中身を取り出す
-                currentTrains = trimmed.replace(/[［］]/g, '').split(',');
-            } else if (trimmed.startsWith('=')) {
-                // 運行番号の抽出: 「=12K」から「12K」を取り出す
-                const unyoName = trimmed.substring(1);
-                currentTrains.forEach(tr => {
-                    if (tr) newMap[tr] = unyoName;
-                });
-                currentTrains = [];
-            }
-        });
-        unyoMap8R = newMap;
-    } catch (e) {
-        console.error("Unyo file load error:", e);
-    }
+    // 8R.txtの中身をそのままシミュレート
+    const testData = {
+        "6501": "11K", "5500": "11K", "5101": "11K",
+        "5600": "12K", "5001": "12K", "5006": "12K",
+        "8123": "14K", "6119": "14K", "5114": "14K"
+    };
+    unyoMap8R = testData;
+    console.log("テストデータ読み込み完了");
 }
 
 function getCarModel(sk) {
