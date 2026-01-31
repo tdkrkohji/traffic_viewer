@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>京王線 リアルタイム配線図 Ver.1.2 (運用統合版)</title>
+    <style>
+        :root { --bg: #0f0f0f; --accent: #58a6ff; }
+        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
+        
+        header {
+            height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9);
+            display: flex; align-items: center; border-bottom: 1px solid #333;
+            position: fixed; top: 0; width: 100%; z-index: 1000;
+        }
+
+        .map-wrapper {
+            position: absolute; top: 50px; bottom: 0; left: 0; right: 0;
+            overflow: auto; -webkit-overflow-scrolling: touch; background: #000;
+        }
+
+        .map-content { position: relative; width: 1200px; height: 675px; }
+        .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
+
+        .train {
+            position: absolute; width: 26px; height: 16px;
+            border-radius: 2px; border: 1.5px solid #fff;
+            transform: translate(-50%, -50%); z-index: 100;
+            transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.8);
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .train-label {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            background: rgba(0,0,0,0.85); color: #fff;
+            padding: 2px 7px; border-radius: 4px;
+            font-size: 10px; font-weight: bold; white-space: nowrap;
+            display: flex; flex-direction: row; align-items: center; gap: 5px; 
+            border: 1px solid #444; pointer-events: none; z-index: 110;
+        }
+
+        .label-nobori { right: 100%; margin-right: 8px; }
+        .label-kudari { left: 100%; margin-left: 8px; }
+
+        .delay-text { color: #ff4444; font-weight: 900; }
+        .car-model { color: #00ffcc; font-size: 9px; }
+        .unyo-no { color: #ffeb3b; }
+        .car-sr { color: #aaa; font-size: 9px; } 
+        .dest-text { color: #fff; background: #333; padding: 0 3px; border-radius: 2px; } 
+
+        .sy-1 { background-color: #ff4c7c; }
+        .sy-2 { background-color: #00b66a; }
+        .sy-3 { background-color: #0082ff; }
+        .sy-5 { background-color: #d8d100; color: #000; }
+        .sy-6 { background-color: #888; }
+        .sy-9, .sy-11 { background-color: #c71585; }
+    </style>
+</head>
+<body>
+
+<header>
+    <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧に戻る</a>
+    <h1 style="font-size:14px; margin:0;">京王線 リアルタイム配線図 (新宿-明大前)</h1>
+    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">接続中...</div>
+</header>
+
+<div class="map-wrapper">
+    <div class="map-content" id="mapContent">
+        <img src="image.png" class="map-img">
+        <div id="trainLayer"></div>
+    </div>
+</div>
+
+<script>
+const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
+const UNYO_TXT_URL = "unyo/h/8R.txt"; // 先ほど成功したパス
+
+const posCoords = {
+    "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
+    "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
+    "E002_1": {x: 680, y: 65},  "E002_2": {x: 680, y: 91},  "E002_3S": {x: 680, y: 120}, "E002_4": {x: 680, y: 146},
+    "E033_4": {x: 149, y: 91},  "E033_5": {x: 149, y: 119},
+    "D034":   {x: 295, y: 91},  "U033":   {x: 295, y: 120},
+    "E034_1": {x: 367, y: 91},  "E034_2": {x: 367, y: 120},
+    "D035":   {x: 430, y: 91},  "U034":   {x: 430, y: 120},
+    "E035_1": {x: 490, y: 91},  "E035_2": {x: 490, y: 120},
+    "S002":   {x: 600, y: 91},  "U035":   {x: 600, y: 120},
+    "D003":   {x: 785, y: 65},  "U002":   {x: 785, y: 146},
+    "E003_1": {x: 893, y: 91},  "E003_2": {x: 893, y: 120},
+    "D004":   {x: 976, y: 91},  "U003":   {x: 976, y: 120},
+    "E004_1": {x: 1053, y: 91}, "E004_2": {x: 1053, y: 120},
+    "D005":   {x: 55,  y: 322}, "U004":   {x: 1145, y: 120},
+    "E005_1": {x: 145, y: 322}, "E005_2": {x: 145, y: 351},
+    "D006":   {x: 230, y: 322}, "U005":   {x: 230, y: 351},
+    "E006_1": {x: 337, y: 294}, "E006_2": {x: 337, y: 322}, "E006_3": {x: 337, y: 351}, "E006_4": {x: 337, y: 378},
+    "D007":   {x: 419, y: 322}, "U006":   {x: 419, y: 351},
+    "E007_1": {x: 479, y: 322}, "E007_2": {x: 479, y: 351},
+    "D008":   {x: 549, y: 322}, "U007":   {x: 549, y: 351},
+    "E008_10":{x: 630, y: 294}, "E008_1": {x: 630, y: 310}, "E008_2": {x: 630, y: 336}, "E008_3": {x: 630, y: 351},
+    "D009":   {x: 729, y: 322}, "U008":   {x: 729, y: 351},
+    "E009_1": {x: 788, y: 322}, "E009_2": {x: 788, y: 351},
+    "D010":   {x: 871, y: 322}, "U009":   {x: 871, y: 351},
+    "E010_1": {x: 950, y: 322}, "E010_2": {x: 950, y: 351},
+    "D011":   {x: 1033, y: 322}, "U010":  {x: 1033, y: 351},
+    "E011_1": {x: 1122, y: 322}, "E011_2": {x: 1122, y: 351},
+    "D012":   {x: 1187,  y: 322}, "U011":   {x: 35,  y: 566},
+    "E012_1": {x: 144, y: 509}, "E012_2": {x: 144, y: 537}, "E012_3": {x: 144, y: 566}, "E012_4": {x: 144, y: 594},
+    "D013":   {x: 266, y: 537}, "U012":   {x: 266, y: 566},
+    "E013_1": {x: 350, y: 537}, "E013_2": {x: 350, y: 566},
+    "D014":   {x: 419, y: 537}, "U013":   {x: 419, y: 566},
+    "E014_1": {x: 490, y: 537}, "E014_2": {x: 490, y: 566},
+    "D015":   {x: 560, y: 537}, "U014":   {x: 560, y: 566},
+    "E015_1": {x: 630, y: 537}, "E015_2": {x: 630, y: 566},
+    "D016":   {x: 690, y: 537}, "U015":   {x: 690, y: 566},
+    "E016_1": {x: 789, y: 483}, "E016_1S":{x: 789, y: 483}, "E016_2": {x: 789, y: 511}, "E016_2S":{x: 789, y: 511}, "E016_3": {x: 789, y: 537}, "E016_4": {x: 789, y: 566}
+};
+
+let unyoMap = {};
+
+// 8R.txt を読み込んで解析する新しい関数
+async function fetchUnyoData() {
+    try {
+        const res = await fetch(UNYO_TXT_URL + "?" + Date.now());
+        const text = await res.text();
+        const lines = text.split(/\r?\n/);
+        let currentTrains = [];
+        const newMap = {};
+
+        lines.forEach(line => {
+            const l = line.trim();
+            if (!l) return;
+            // 列車番号リスト行
+            if (l.includes('［') || l.includes('[')) {
+                currentTrains = l.replace(/[［］\[\]]/g, '').split(',').map(t => t.trim());
+            } 
+            // 運用番号行
+            else if (l.startsWith('=')) {
+                const u = l.substring(1).trim();
+                currentTrains.forEach(tr => { if(tr) newMap[tr] = u; });
+                currentTrains = [];
+            }
+        });
+        unyoMap = newMap;
+    } catch (e) { console.error("Unyo Load Error", e); }
+}
+
+function getCarModel(sk) {
+    const models = { "2":"2000", "5":"5000", "7":"7000", "8":"8000", "9":"9000", "0":"10-300" };
+    return models[String(sk)] || "";
+}
+
+function getDestName(ik) {
+    const destMap = {
+        "001":"新", "033":"N", "002":"笹", "003":"明", "006":"桜", "010":"烏", "012":"つ", "016":"調",
+        "018":"飛", "021":"東", "022":"府", "027":"高", "031":"北", "032":"八", "036":"馬", "037":"動",
+        "042":"尾", "043":"山", "048":"若", "050":"セ", "052":"沢", "054":"橋", "101":"市", "107":"岩",
+        "112":"住", "114":"島", "118":"瑞", "120":"本", "000":"<当駅止まり>"
+    };
+    return destMap[String(ik)] || ik;
+}
+
+// --- 運用解析ロジック（TもKも関係なく、数字を紐付ける） ---
+async function fetchUnyoData() {
+    try {
+        const res = await fetch(UNYO_TXT_URL + "?" + Date.now());
+        const text = await res.text();
+        const lines = text.split(/\r?\n/);
+        let currentTrains = [];
+        const newMap = {};
+
+        lines.forEach(line => {
+            const l = line.trim();
+            if (!l) return;
+
+            // 1. ［ ］の中の数字をすべて取り出す
+            if (l.includes('［') || l.includes('[')) {
+                currentTrains = l.replace(/[［］\[\]]/g, '')
+                                 .split(',')
+                                 .map(t => t.trim().replace('T', '')); // Tが付いていても数字だけにする
+            } 
+            // 2. = の後の運用名を、さっき取り出した数字すべてに紐付ける
+            else if (l.startsWith('=')) {
+                const u = l.substring(1).trim(); // "11K" や "23T" がそのまま入る
+                currentTrains.forEach(tr => {
+                    if(tr) newMap[tr] = u; 
+                });
+                currentTrains = [];
+            }
+        });
+        unyoMap = newMap;
+    } catch (e) { console.error("Unyo Load Error", e); }
+}
+
+// --- 表示ロジック（APIの番号を柔軟にマッチさせる） ---
+async function update() {
+    await fetchUnyoData();
+    try {
+        const res = await fetch(FEED_URL + "?" + Date.now());
+        const json = await res.json();
+        const layer = document.getElementById('trainLayer');
+        const activeIds = new Set();
+        const allTrains = [...(json.TS || []), ...(json.TB || [])];
+        const posCounter = {};
+
+        allTrains.forEach(st => {
+            (st.ps || []).forEach(p => {
+                if (!p.tr) return;
+                
+                const key = p.bs ? `${st.id}_${p.bs}` : st.id;
+                const base = posCoords[key] || posCoords[st.id];
+
+                if (base) {
+                    activeIds.add(p.tr);
+                    const cKey = `${base.x}_${base.y}`;
+                    const offset = (posCounter[cKey] || 0) * 10;
+                    posCounter[cKey] = (posCounter[cKey] || 0) + 1;
+
+                    let el = document.getElementById(`tr-${p.tr}`);
+                    if (!el) {
+                        el = document.createElement('div');
+                        el.id = `tr-${p.tr}`;
+                        el.className = 'train';
+                        layer.appendChild(el);
+                    }
+                    
+                    el.className = `train sy-${p.sy || '6'}`;
+                    el.style.left = `${base.x + offset}px`;
+                    el.style.top = `${base.y}px`;
+
+                    // 【ここが重要】マッチング処理
+                    const trRaw = String(p.tr).trim();
+                    // 0埋めを考慮して、"0101" も "101" も同じとみなして探す
+                    const trNo = trRaw.replace(/^0+/, ''); 
+                    
+                    let unyo = unyoMap[trRaw] || unyoMap[trNo] || "--";
+                    
+                    const model = getCarModel(p.sk);
+                    const dest = getDestName(p.ik_tr);
+                    const sr = p.sr ? `${p.sr}両` : "";
+                    const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
+                    const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
+
+                    el.innerHTML = `
+                        <div class="train-label ${dirClass}">
+                            <span class="car-model">${model}</span>
+                            <span class="unyo-no">${unyo}</span>
+                            <span class="car-sr">${sr}</span>
+                            <span class="dest-text">${dest}</span>
+                            <span>${p.tr}</span>
+                            ${delayHtml}
+                        </div>`;
+                }
+            });
+        });
+
+        document.querySelectorAll('.train').forEach(el => {
+            if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
+        });
+        document.getElementById('status').textContent = "最終更新: " + new Date().toLocaleTimeString();
+    } catch (e) { console.error(e); }
+}
+
+setInterval(update, 20000);
+update();
+</script>
+</body>
+</html>
