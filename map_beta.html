@@ -2,82 +2,50 @@
 <html lang="ja">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>動作確認版 Ver.1.3</title>
+    <title>Unyo File Access Check</title>
     <style>
-        :root { --bg: #0f0f0f; --accent: #58a6ff; }
-        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
-        header { height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9); display: flex; align-items: center; border-bottom: 1px solid #333; position: fixed; top: 0; width: 100%; z-index: 1000; }
-        .map-wrapper { position: absolute; top: 50px; bottom: 0; left: 0; right: 0; overflow: auto; background: #000; }
-        .map-content { position: relative; width: 1200px; height: 675px; }
-        .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
-        .train { position: absolute; width: 26px; height: 16px; border-radius: 2px; border: 1.5px solid #fff; transform: translate(-50%, -50%); z-index: 100; transition: all 1.5s linear; box-shadow: 0 0 10px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; }
-        .train-label { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; display: flex; flex-direction: row; align-items: center; gap: 5px; border: 1px solid #444; z-index: 110; }
-        .label-kudari { left: 100%; margin-left: 8px; }
-        .sy-1 { background-color: #ff4c7c; }
-        .unyo-no { color: #ffeb3b; }
-        .dest-text { color: #fff; background: #333; padding: 0 3px; border-radius: 2px; }
+        body { background: #1a1a1a; color: #00ff00; font-family: monospace; padding: 20px; }
+        .log { border: 1px solid #444; padding: 10px; background: #000; white-space: pre-wrap; margin-top: 10px; }
+        .status-ok { color: #00ff00; font-weight: bold; }
+        .status-error { color: #ff4444; font-weight: bold; }
     </style>
 </head>
 <body>
-
-<header><h1 style="font-size:14px;">システム動作テスト中（GitHub読み込みなし）</h1></header>
-
-<div class="map-wrapper">
-    <div class="map-content">
-        <img src="image.png" class="map-img" onerror="this.style.background='#222'">
-        <div id="trainLayer"></div>
-    </div>
-</div>
+    <h2>運用テキスト取得テスト</h2>
+    <div>URL: <span id="urlDisplay"></span></div>
+    <div id="status">チェック中...</div>
+    
+    <h3>取得したテキストの内容:</h3>
+    <div id="log" class="log">取得を待機中...</div>
 
 <script>
-// --- 1. 座標データ (一部抜粋してテスト) ---
-const posCoords = {
-    "E001_1": {x: 149, y: 135},
-    "D002":   {x: 366, y: 163},
-    "E048_1": {x: 780, y: 147} // 相模原線
-};
+// ここにアクセスしたい相対パスを記述
+const UNYO_TXT_URL = "unyo/h/8R.txt";
+document.getElementById('urlDisplay').textContent = UNYO_TXT_URL;
 
-// --- 2. 運用データをコード内に直接書く (GitHubを使わないテスト) ---
-const testUnyoMap = {
-    "5600": "12K",
-    "5001": "12K",
-    "8123": "14K"
-};
+async function testAccess() {
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
 
-function update() {
-    const layer = document.getElementById('trainLayer');
-    layer.innerHTML = ""; // クリア
-
-    // --- 3. 強制的にテスト用の電車を表示する ---
-    const testTrains = [
-        { tr: "5600", pos: "E001_1", dest: "橋本", sy: "1" },
-        { tr: "8123", pos: "E048_1", dest: "新",   sy: "1" }
-    ];
-
-    testTrains.forEach(p => {
-        const base = posCoords[p.pos];
-        if (!base) return;
-
-        const unyo = testUnyoMap[p.tr] || "--"; // ここで12Kなどが出るかチェック
-
-        const el = document.createElement('div');
-        el.className = `train sy-${p.sy}`;
-        el.style.left = `${base.x}px`;
-        el.style.top = `${base.y}px`;
-
-        el.innerHTML = `
-            <div class="train-label label-kudari">
-                <span class="unyo-no">${unyo}</span>
-                <span class="dest-text">${p.dest}</span>
-                <span>${p.tr}</span>
-            </div>`;
-        layer.appendChild(el);
-    });
+    try {
+        // キャッシュを避けるためにタイムスタンプを付与
+        const response = await fetch(UNYO_TXT_URL + "?" + Date.now());
+        
+        if (response.ok) {
+            const text = await response.ok ? await response.text() : "取得失敗";
+            statusEl.innerHTML = '<span class="status-ok">成功: ファイルが見つかりました</span>';
+            logEl.textContent = text;
+        } else {
+            statusEl.innerHTML = `<span class="status-error">失敗: HTTPステータス ${response.status}</span>`;
+            logEl.textContent = "ファイルが存在しないか、パスが間違っています。";
+        }
+    } catch (e) {
+        statusEl.innerHTML = '<span class="status-error">エラー: アクセスがブロックされました</span>';
+        logEl.textContent = e.toString() + "\n\n【考えられる理由】\n1. ファイルの場所が違う\n2. CORSポリシー違反（異なるドメインから読み込もうとしている）";
+    }
 }
 
-// 起動時に実行
-update();
+testAccess();
 </script>
 </body>
 </html>
