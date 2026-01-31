@@ -4,56 +4,22 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <title> Ver.1.2</title>
-    <script src="unyo_kt.js"></script>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
-        
-        header {
-            height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9);
-            display: flex; align-items: center; border-bottom: 1px solid #333;
-            position: fixed; top: 0; width: 100%; z-index: 1000;
-        }
-
-        .map-wrapper {
-            position: absolute; top: 50px; bottom: 0; left: 0; right: 0;
-            overflow: auto; -webkit-overflow-scrolling: touch; background: #000;
-        }
-
+        header { height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9); display: flex; align-items: center; border-bottom: 1px solid #333; position: fixed; top: 0; width: 100%; z-index: 1000; }
+        .map-wrapper { position: absolute; top: 50px; bottom: 0; left: 0; right: 0; overflow: auto; -webkit-overflow-scrolling: touch; background: #000; }
         .map-content { position: relative; width: 1200px; height: 675px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
-
-        .train {
-            position: absolute; width: 26px; height: 16px;
-            border-radius: 2px; border: 1.5px solid #fff;
-            transform: translate(-50%, -50%); z-index: 100;
-            transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 10px rgba(0,0,0,0.8);
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        .train-label {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(0,0,0,0.85); color: #fff;
-            padding: 2px 7px; border-radius: 4px;
-            font-size: 10px; font-weight: bold; white-space: nowrap;
-            display: flex; flex-direction: row; align-items: center; gap: 5px; 
-            border: 1px solid #444;
-            pointer-events: none;
-            z-index: 110;
-        }
-
+        .train { position: absolute; width: 26px; height: 16px; border-radius: 2px; border: 1.5px solid #fff; transform: translate(-50%, -50%); z-index: 100; transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; }
+        .train-label { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; display: flex; flex-direction: row; align-items: center; gap: 5px; border: 1px solid #444; pointer-events: none; z-index: 110; }
         .label-nobori { right: 100%; margin-right: 8px; }
         .label-kudari { left: 100%; margin-left: 8px; }
-
         .delay-text { color: #ff4444; font-weight: 900; }
         .car-model { color: #00ffcc; font-size: 9px; }
         .unyo-no { color: #ffeb3b; }
         .car-sr { color: #aaa; font-size: 9px; } 
         .dest-text { color: #fff; background: #333; padding: 0 3px; border-radius: 2px; } 
-
         .sy-1 { background-color: #ff4c7c; }
         .sy-2 { background-color: #00b66a; }
         .sy-3 { background-color: #0082ff; }
@@ -79,9 +45,10 @@
 
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
+const UNYO_TXT_URL = "unyo/h/8R.txt";
 
+// 座標データ（中略：そのまま使用してください）
 const posCoords = {
-    // 指定された全座標リスト
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
     "E002_1": {x: 680, y: 65},  "E002_2": {x: 680, y: 91},  "E002_3S": {x: 680, y: 120}, "E002_4": {x: 680, y: 146},
@@ -121,6 +88,37 @@ const posCoords = {
     "E016_1": {x: 789, y: 483}, "E016_1S":{x: 789, y: 483}, "E016_2": {x: 789, y: 511}, "E016_2S":{x: 789, y: 511}, "E016_3": {x: 789, y: 537}, "E016_4": {x: 789, y: 566}
 };
 
+let unyoMap8R = {}; // 8R.txtの内容を格納する用
+
+// 8R.txtを取得して解析する関数
+async function fetchUnyoData() {
+    try {
+        const res = await fetch(UNYO_TXT_URL + "?" + Date.now());
+        const text = await res.text();
+        const lines = text.split('\n');
+        let currentTrains = [];
+        const newMap = {};
+
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('［')) {
+                // 列番リストの抽出: 「［5600,5001...］」から中身を取り出す
+                currentTrains = trimmed.replace(/[［］]/g, '').split(',');
+            } else if (trimmed.startsWith('=')) {
+                // 運行番号の抽出: 「=12K」から「12K」を取り出す
+                const unyoName = trimmed.substring(1);
+                currentTrains.forEach(tr => {
+                    if (tr) newMap[tr] = unyoName;
+                });
+                currentTrains = [];
+            }
+        });
+        unyoMap8R = newMap;
+    } catch (e) {
+        console.error("Unyo file load error:", e);
+    }
+}
+
 function getCarModel(sk) {
     const models = { "2":"2000", "5":"5000", "7":"7000", "8":"8000", "9":"9000", "0":"10-300" };
     return models[String(sk)] || "";
@@ -131,22 +129,30 @@ function getDestName(ik) {
         "001":"新", "033":"N", "002":"笹", "003":"明", "006":"桜", "010":"烏", "012":"つ", "016":"調",
         "018":"飛", "021":"東", "022":"府", "027":"高", "031":"北", "032":"八", "036":"馬", "037":"動",
         "042":"尾", "043":"山", "048":"若", "050":"セ", "052":"沢", "054":"橋", "101":"市", "107":"岩",
-        "112":"住", "114":"島", "118":"瑞", "120":"本", "000":"<当駅止まり>"
+        "112":"住", "114":"島", "118":"瑞", "120":"本", "000":"終"
     };
     return destMap[String(ik)] || ik;
 }
 
-function getUnyoFromJS(trNo) {
-    if (typeof data === 'undefined') return null;
-    for (const [unyoName, trainList] of Object.entries(data)) {
-        if (trainList.includes(String(trNo))) {
-            return unyoName;
+// 運行番号を特定する
+function getUnyoNo(trNo) {
+    const trStr = String(trNo);
+    // 1. 8R.txt から検索
+    if (unyoMap8R[trStr]) return unyoMap8R[trStr];
+    
+    // 2. もし unyo_kt.js (data変数) があればそこから検索
+    if (typeof data !== 'undefined') {
+        for (const [unyoName, trainList] of Object.entries(data)) {
+            if (trainList.includes(trStr)) return unyoName;
         }
     }
-    return null;
+    return "--";
 }
 
 async function update() {
+    // 毎回最新の8R.txtも読み込む（必要に応じて頻度を調整してください）
+    await fetchUnyoData();
+
     try {
         const res = await fetch(FEED_URL + "?" + Date.now());
         const json = await res.json();
@@ -180,7 +186,7 @@ async function update() {
                     el.style.top = `${base.y}px`;
 
                     const model = getCarModel(p.sk);
-                    const unyo = getUnyoFromJS(p.tr) || "--";
+                    const unyo = getUnyoNo(p.tr); // 修正した検索関数
                     const dest = getDestName(p.ik_tr);
                     const sr = p.sr ? `${p.sr}両` : "";
                     const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
