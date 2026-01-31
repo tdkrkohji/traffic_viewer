@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>京王線 リアルタイム配線図 Ver.1.3</title>
+    <title>京王線 リアルタイム配線図 Ver.1.31</title>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif; overflow: hidden; }
@@ -22,7 +22,6 @@
         .map-content { position: relative; width: 1200px; height: 675px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
 
-        /* 列車アイコン本体 */
         .train {
             position: absolute; width: 24px; height: 14px;
             border-radius: 1px; border: 1px solid #fff;
@@ -30,34 +29,30 @@
             transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* 列車ラベル：アイコンの少し上に配置 */
         .train-label {
             position: absolute;
             left: 50%;
-            top: -32px; /* アイコンからの距離（上に浮かせる） */
+            top: -34px; 
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.75);
             color: #fff;
-            padding: 3px 5px;
+            padding: 2px 5px;
             border-radius: 2px;
-            font-size: 8.5px; /* さらに小さく */
-            font-weight: 300; /* 文字を細く */
-            line-height: 1.2;
+            font-size: 8px;
+            font-weight: 300;
+            line-height: 1.1;
             white-space: nowrap;
             display: flex;
-            flex-direction: column; /* 縦に並べる */
-            align-items: center;
+            flex-direction: column;
+            align-items: flex-start; /* 左揃え */
             pointer-events: none;
             z-index: 110;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
         }
 
         .label-row { display: flex; gap: 4px; }
-        .unyo-no { color: #fff; } /* 運用も白に */
-        .delay-text { color: #ff4444; font-weight: 700; } /* 遅れは赤 */
-        .car-model { color: #00ffcc; font-size: 8px; }
+        .delay-text { color: #ff4444; font-weight: 700; }
+        .car-model { color: #00ffcc; font-size: 7.5px; }
 
-        /* 種別カラー */
         .sy-1 { background-color: #ff4c7c; }
         .sy-2 { background-color: #00b66a; }
         .sy-3 { background-color: #0082ff; }
@@ -70,7 +65,7 @@
 
 <header>
     <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧に戻る</a>
-    <h1 style="font-size:13px; margin:0; font-weight:300;">京王線 運用表示システム (新宿-明大前)</h1>
+    <h1 style="font-size:13px; margin:0; font-weight:300;">京王線 リアルタイム配線図 (新宿-明大前)</h1>
     <div id="status" style="margin-left:auto; font-size:10px; color:#aaa;">接続中...</div>
 </header>
 
@@ -139,7 +134,6 @@ async function fetchUnyoData() {
             const l = line.trim();
             if (!l) return;
             if (l.includes('［') || l.includes('[')) {
-                // Tを消して数字のみでインデックスを作る（T運用対策）
                 currentTrains = l.replace(/[［］\[\]]/g, '').split(',').map(t => t.trim().replace('T', ''));
             } else if (l.startsWith('=')) {
                 const u = l.substring(1).trim();
@@ -185,7 +179,7 @@ async function update() {
                 if (base) {
                     activeIds.add(p.tr);
                     const cKey = `${base.x}_${base.y}`;
-                    const offset = (posCounter[cKey] || 0) * 10;
+                    const offset = (posCounter[cKey] || 0) * 12;
                     posCounter[cKey] = (posCounter[cKey] || 0) + 1;
 
                     let el = document.getElementById(`tr-${p.tr}`);
@@ -200,14 +194,13 @@ async function update() {
                     el.style.left = `${base.x + offset}px`;
                     el.style.top = `${base.y}px`;
 
-                    // 運用マッチング
                     const trRaw = String(p.tr).trim();
-                    const trNo = trRaw.replace(/^0+/, ''); // 0埋め除去
+                    const trNo = trRaw.replace(/^0+/, ''); 
                     const unyo = unyoMap[trRaw] || unyoMap[trNo] || "--";
                     
                     const model = getCarModel(p.sk);
                     const dest = getDestName(p.ik_tr);
-                    const sr = p.sr ? p.sr : ""; // 数字のみ
+                    const sr = p.sr || "";
                     const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
 
                     el.innerHTML = `
@@ -215,7 +208,7 @@ async function update() {
                             <div class="label-row">
                                 <span>${dest}</span>
                                 <span>${p.tr}</span>
-                                <span class="unyo-no">${unyo}</span>
+                                <span>${unyo}</span>
                             </div>
                             <div class="label-row">
                                 <span>${sr}</span>
