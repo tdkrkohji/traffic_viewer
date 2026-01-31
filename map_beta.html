@@ -156,7 +156,7 @@ for (const [unyo, list] of Object.entries(unyoData)) {
 // --- 8R.txt 読み込み ---
 async function load8R() {
     try {
-        const res = await fetch('unyo/h/8R.txt');
+        const res = await fetch('https://raw.githubusercontent.com/tdkrkohji/traffic_viewer/main/unyo/h/8R.txt');
         const text = await res.text();
         const lines = text.split('\n').map(l => l.trim()).filter(l => l);
 
