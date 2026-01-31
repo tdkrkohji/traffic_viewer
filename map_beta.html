@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>Ver.1.31</title>
+    <title>京王線 リアルタイム配線図 Ver.1.6</title>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif; overflow: hidden; }
@@ -22,24 +22,31 @@
         .map-content { position: relative; width: 1200px; height: 675px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
 
+        /* 列車アイコン（三角形） */
         .train {
-            position: absolute; width: 24px; height: 14px;
-            border-radius: 1px; border: 1px solid #fff;
-            transform: translate(-50%, -50%); z-index: 100;
+            position: absolute; width: 22px; height: 16px;
+            z-index: 100;
             transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translate(-50%, -50%);
+            /* 三角形に白枠を見せるためのシャドウ */
+            filter: drop-shadow(0 0 0.8px #fff);
         }
+
+        /* 向きの定義（1: 上り/左向き、2: 下り/右向き） */
+        .dir-1 { clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+        .dir-2 { clip-path: polygon(0 0, 100% 50%, 0 100%); }
 
         .train-label {
             position: absolute;
             left: 50%;
-            top: -34px; 
+            top: -36px; 
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.65);
+            background: rgba(0,0,0,0.7);
             color: #fff;
             padding: 2px 5px;
             border-radius: 2px;
-            font-size: 10px;
-            font-weight: 400;
+            font-size: 9px;
+            font-weight: 300;
             line-height: 1.1;
             white-space: nowrap;
             display: flex;
@@ -50,7 +57,7 @@
         }
 
         .label-row { display: flex; gap: 4px; }
-        .delay-text { color: #ff4444; font-weight: 550; }
+        .delay-text { color: #ff4444; font-weight: 700; }
         .car-model { color: #00ffcc; font-size: 7.5px; }
 
         .sy-1 { background-color: #ff4c7c; }
@@ -65,7 +72,7 @@
 
 <header>
     <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧に戻る</a>
-    <h1 style="font-size:13px; margin:0; font-weight:300;">v1.56</h1>
+    <h1 style="font-size:13px; margin:0; font-weight:300;">京王線 リアルタイム配線図 (新宿-明大前)</h1>
     <div id="status" style="margin-left:auto; font-size:10px; color:#aaa;">接続中...</div>
 </header>
 
@@ -190,7 +197,8 @@ async function update() {
                         layer.appendChild(el);
                     }
                     
-                    el.className = `train sy-${p.sy || '6'}`;
+                    // 向き(ki)と種別(sy)のクラスを付与
+                    el.className = `train sy-${p.sy || '6'} dir-${p.ki || '2'}`;
                     el.style.left = `${base.x + offset}px`;
                     el.style.top = `${base.y}px`;
 
