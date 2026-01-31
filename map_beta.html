@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>京王線 リアルタイム配線図 Ver.1.8</title>
+    <title>京王線 リアルタイム配線図 Ver.1.9</title>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif; overflow: hidden; }
@@ -22,11 +22,10 @@
         .map-content { position: relative; width: 1200px; height: 675px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
 
-        /* 列車コンテナ */
+        /* 列車コンテナ（アニメーション削除） */
         .train {
             position: absolute; width: 14px; height: 14px;
             z-index: 100;
-            transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
             transform: translate(-50%, -50%);
             display: flex; align-items: center; justify-content: center;
         }
@@ -42,10 +41,10 @@
         .dir-0 .train-shape { clip-path: polygon(100% 0, 0 50%, 100% 100%); }
         .dir-1 .train-shape { clip-path: polygon(0 0, 100% 50%, 0 100%); }
 
+        /* 列車ラベル基本設定 */
         .train-label {
             position: absolute;
             left: 50%;
-            bottom: 18px;
             transform: translateX(-50%);
             background: rgba(0,0,0,0.65);
             color: #fff;
@@ -60,6 +59,18 @@
             align-items: flex-start;
             pointer-events: none;
             z-index: 110;
+        }
+
+        /* 下り(dir-1)は上に表示 */
+        .dir-1 .train-label {
+            bottom: 15px;
+            top: auto;
+        }
+
+        /* 上り(dir-0)は下に表示 */
+        .dir-0 .train-label {
+            top: 15px;
+            bottom: auto;
         }
 
         .label-row { display: flex; gap: 4px; }
@@ -79,7 +90,7 @@
 
 <header>
     <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧に戻る</a>
-    <h1 style="font-size:13px; margin:0; font-weight:300;">v1.8</h1>
+    <h1 style="font-size:13px; margin:0; font-weight:300;">v1.9</h1>
     <div id="status" style="margin-left:auto; font-size:10px; color:#aaa;">接続中...</div>
 </header>
 
@@ -133,7 +144,7 @@ const posCoords = {
     "D016":   {x: 690, y: 537}, "U015":   {x: 690, y: 566},
     "E016_1": {x: 789, y: 483}, "E016_1S":{x: 789, y: 483}, "E016_2": {x: 789, y: 511}, "E016_2S":{x: 789, y: 511}, "E016_3": {x: 789, y: 537}, "E016_4": {x: 789, y: 566},
     "D044":   {x: 879, y: 451}, "S016":   {x: 891, y: 477}, "D017":   {x: 950, y: 537}, "U016":   {x: 950, y: 566},
-    "E044_1":   {x: 930, y: 451}, "E044_2":   {x: 930, y: 477}
+    "E044_1": {x: 930, y: 451}, "E044_2": {x: 930, y: 477}
 };
 
 let unyoMap = {};
@@ -205,7 +216,6 @@ async function update() {
                         layer.appendChild(el);
                     }
                     
-                    // 方向正規化: 0は上り、1は下り（それ以外は一旦1とする）
                     let direction = String(p.ki);
                     if (direction !== '0' && direction !== '1') direction = '1';
 
