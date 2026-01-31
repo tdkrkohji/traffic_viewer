@@ -2,50 +2,168 @@
 <html lang="ja">
 <head>
     <meta charset="utf-8" />
-    <title>Unyo File Access Check</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>京王線 リアルタイム配線図 (新宿-調布)</title>
     <style>
-        body { background: #1a1a1a; color: #00ff00; font-family: monospace; padding: 20px; }
-        .log { border: 1px solid #444; padding: 10px; background: #000; white-space: pre-wrap; margin-top: 10px; }
-        .status-ok { color: #00ff00; font-weight: bold; }
-        .status-error { color: #ff4444; font-weight: bold; }
+        :root { --bg: #0f0f0f; --accent: #58a6ff; }
+        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
+        header { height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9); display: flex; align-items: center; border-bottom: 1px solid #333; position: fixed; top: 0; width: 100%; z-index: 1000; }
+        .map-wrapper { position: absolute; top: 50px; bottom: 0; left: 0; right: 0; overflow: auto; -webkit-overflow-scrolling: touch; background: #000; }
+        .map-content { position: relative; width: 1200px; height: 675px; }
+        .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
+        .train { position: absolute; width: 26px; height: 16px; border-radius: 2px; border: 1.5px solid #fff; transform: translate(-50%, -50%); z-index: 100; transition: all 1.5s linear; box-shadow: 0 0 10px rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; }
+        .train-label { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; display: flex; flex-direction: row; align-items: center; gap: 5px; border: 1px solid #444; pointer-events: none; z-index: 110; }
+        .label-nobori { right: 100%; margin-right: 8px; }
+        .label-kudari { left: 100%; margin-left: 8px; }
+        .unyo-no { color: #ffeb3b; }
+        .dest-text { color: #fff; background: #333; padding: 0 3px; border-radius: 2px; }
+        .sy-1 { background-color: #ff4c7c; } .sy-2 { background-color: #00b66a; } .sy-3 { background-color: #0082ff; }
+        .sy-5 { background-color: #d8d100; color: #000; } .sy-6 { background-color: #888; } .sy-9, .sy-11 { background-color: #c71585; }
     </style>
 </head>
 <body>
-    <h2>運用テキスト取得テスト</h2>
-    <div>URL: <span id="urlDisplay"></span></div>
-    <div id="status">チェック中...</div>
-    
-    <h3>取得したテキストの内容:</h3>
-    <div id="log" class="log">取得を待機中...</div>
+
+<header>
+    <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧に戻る</a>
+    <h1 style="font-size:14px; margin:0;">京王線 配線図 (新宿-調布)</h1>
+    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">接続中...</div>
+</header>
+
+<div class="map-wrapper">
+    <div class="map-content">
+        <img src="image.png" class="map-img">
+        <div id="trainLayer"></div>
+    </div>
+</div>
 
 <script>
-// ここにアクセスしたい相対パスを記述
+const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 const UNYO_TXT_URL = "unyo/h/8R.txt";
-document.getElementById('urlDisplay').textContent = UNYO_TXT_URL;
 
-async function testAccess() {
-    const statusEl = document.getElementById('status');
-    const logEl = document.getElementById('log');
+const posCoords = {
+    "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
+    "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
+    "E002_1": {x: 680, y: 65},  "E002_2": {x: 680, y: 91},  "E002_3S": {x: 680, y: 120}, "E002_4": {x: 680, y: 146},
+    "E033_4": {x: 149, y: 91},  "E033_5": {x: 149, y: 119},
+    "D034":   {x: 295, y: 91},  "U033":   {x: 295, y: 120},
+    "E034_1": {x: 367, y: 91},  "E034_2": {x: 367, y: 120},
+    "D035":   {x: 430, y: 91},  "U034":   {x: 430, y: 120},
+    "E035_1": {x: 490, y: 91},  "E035_2": {x: 490, y: 120},
+    "S002":   {x: 600, y: 91},  "U035":   {x: 600, y: 120},
+    "D003":   {x: 785, y: 65},  "U002":   {x: 785, y: 146},
+    "E003_1": {x: 893, y: 91},  "E003_2": {x: 893, y: 120},
+    "D004":   {x: 976, y: 91},  "U003":   {x: 976, y: 120},
+    "E004_1": {x: 1053, y: 91}, "E004_2": {x: 1053, y: 120},
+    "D005":   {x: 55,  y: 322}, "U004":   {x: 1145, y: 120},
+    "E005_1": {x: 145, y: 322}, "E005_2": {x: 145, y: 351},
+    "D006":   {x: 230, y: 322}, "U005":   {x: 230, y: 351},
+    "E006_1": {x: 337, y: 294}, "E006_2": {x: 337, y: 322}, "E006_3": {x: 337, y: 351}, "E006_4": {x: 337, y: 378},
+    "D007":   {x: 419, y: 322}, "U006":   {x: 419, y: 351},
+    "E007_1": {x: 479, y: 322}, "E007_2": {x: 479, y: 351},
+    "D008":   {x: 549, y: 322}, "U007":   {x: 549, y: 351},
+    "E008_10":{x: 630, y: 294}, "E008_1": {x: 630, y: 310}, "E008_2": {x: 630, y: 336}, "E008_3": {x: 630, y: 351},
+    "D009":   {x: 729, y: 322}, "U008":   {x: 729, y: 351},
+    "E009_1": {x: 788, y: 322}, "E009_2": {x: 788, y: 351},
+    "D010":   {x: 871, y: 322}, "U009":   {x: 871, y: 351},
+    "E010_1": {x: 950, y: 322}, "E010_2": {x: 950, y: 351},
+    "D011":   {x: 1033, y: 322}, "U010":  {x: 1033, y: 351},
+    "E011_1": {x: 1122, y: 322}, "E011_2": {x: 1122, y: 351},
+    "D012":   {x: 1187,  y: 322}, "U011":   {x: 35,  y: 566},
+    "E012_1": {x: 144, y: 509}, "E012_2": {x: 144, y: 537}, "E012_3": {x: 144, y: 566}, "E012_4": {x: 144, y: 594},
+    "D013":   {x: 266, y: 537}, "U012":   {x: 266, y: 566},
+    "E013_1": {x: 350, y: 537}, "E013_2": {x: 350, y: 566},
+    "D014":   {x: 419, y: 537}, "U013":   {x: 419, y: 566},
+    "E014_1": {x: 490, y: 537}, "E014_2": {x: 490, y: 566},
+    "D015":   {x: 560, y: 537}, "U014":   {x: 560, y: 566},
+    "E015_1": {x: 630, y: 537}, "E015_2": {x: 630, y: 566},
+    "D016":   {x: 690, y: 537}, "U015":   {x: 690, y: 566},
+    "E016_1": {x: 789, y: 483}, "E016_1S":{x: 789, y: 483}, "E016_2": {x: 789, y: 511}, "E016_2S":{x: 789, y: 511}, "E016_3": {x: 789, y: 537}, "E016_4": {x: 789, y: 566}
+};
 
+let unyoMap = {};
+
+async function fetchUnyo() {
     try {
-        // キャッシュを避けるためにタイムスタンプを付与
-        const response = await fetch(UNYO_TXT_URL + "?" + Date.now());
-        
-        if (response.ok) {
-            const text = await response.ok ? await response.text() : "取得失敗";
-            statusEl.innerHTML = '<span class="status-ok">成功: ファイルが見つかりました</span>';
-            logEl.textContent = text;
-        } else {
-            statusEl.innerHTML = `<span class="status-error">失敗: HTTPステータス ${response.status}</span>`;
-            logEl.textContent = "ファイルが存在しないか、パスが間違っています。";
-        }
-    } catch (e) {
-        statusEl.innerHTML = '<span class="status-error">エラー: アクセスがブロックされました</span>';
-        logEl.textContent = e.toString() + "\n\n【考えられる理由】\n1. ファイルの場所が違う\n2. CORSポリシー違反（異なるドメインから読み込もうとしている）";
-    }
+        const res = await fetch(UNYO_TXT_URL + "?" + Date.now());
+        const text = await res.text();
+        const lines = text.split(/\r?\n/);
+        let trains = [];
+        const newMap = {};
+        lines.forEach(line => {
+            const l = line.trim();
+            if (l.includes('［')) {
+                trains = l.replace(/[［］]/g, '').split(',');
+            } else if (l.startsWith('=')) {
+                const u = l.substring(1);
+                trains.forEach(t => { if(t) newMap[t.trim()] = u; });
+            }
+        });
+        unyoMap = newMap;
+    } catch (e) { console.error("Unyo Load Error", e); }
 }
 
-testAccess();
+function getDestName(ik) {
+    const d = {"001":"新","002":"笹","003":"明","006":"桜","016":"調","022":"府","032":"八","054":"橋","120":"本"};
+    return d[String(ik)] || ik;
+}
+
+async function update() {
+    await fetchUnyo(); // 運用テキストを毎回更新
+    try {
+        const res = await fetch(FEED_URL + "?" + Date.now());
+        const json = await res.json();
+        const layer = document.getElementById('trainLayer');
+        const activeIds = new Set();
+        const all = [...(json.TS || []), ...(json.TB || [])];
+        const counter = {};
+
+        all.forEach(st => {
+            (st.ps || []).forEach(p => {
+                if (!p.tr) return;
+                const key = p.bs ? `${st.id}_${p.bs}` : st.id;
+                const base = posCoords[key] || posCoords[st.id];
+
+                if (base) {
+                    activeIds.add(p.tr);
+                    const cKey = `${base.x}_${base.y}`;
+                    const offset = (counter[cKey] || 0) * 12; // 重なり防止
+                    counter[cKey] = (counter[cKey] || 0) + 1;
+
+                    let el = document.getElementById(`tr-${p.tr}`);
+                    if (!el) {
+                        el = document.createElement('div');
+                        el.id = `tr-${p.tr}`;
+                        el.className = 'train';
+                        layer.appendChild(el);
+                    }
+                    
+                    el.className = `train sy-${p.sy || '6'}`;
+                    el.style.left = `${base.x + offset}px`;
+                    el.style.top = `${base.y}px`;
+
+                    const unyo = unyoMap[String(p.tr)] || "--";
+                    const dest = getDestName(p.ik_tr);
+                    const dir = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
+
+                    el.innerHTML = `<div class="train-label ${dir}">
+                        <span class="unyo-no">${unyo}</span>
+                        <span class="dest-text">${dest}</span>
+                        <span>${p.tr}</span>
+                    </div>`;
+                }
+            });
+        });
+
+        // 存在しなくなった列車を削除
+        document.querySelectorAll('.train').forEach(el => {
+            if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
+        });
+        document.getElementById('status').textContent = "更新: " + new Date().toLocaleTimeString();
+    } catch (e) { console.error(e); }
+}
+
+setInterval(update, 20000);
+update();
 </script>
 </body>
 </html>
