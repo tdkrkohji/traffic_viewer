@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>京王線 リアルタイム配線図 Ver.1.61</title>
+    <title>京王線 リアルタイム配線図 Ver.1.62</title>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
         body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif; overflow: hidden; }
@@ -22,45 +22,51 @@
         .map-content { position: relative; width: 1200px; height: 675px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 675px; display: block; pointer-events: none; }
 
-        /* 列車アイコン（三角形） */
+        /* 列車コンテナ（ここには clip-path をかけない） */
         .train {
-            position: absolute; width: 22px; height: 16px;
+            position: absolute; width: 22px; height: 20px;
             z-index: 100;
             transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
             transform: translate(-50%, -50%);
-            /* 三角形に白い輪郭線を持たせる */
-            filter: drop-shadow(0 0 0.8px #fff);
+            display: flex; align-items: center; justify-content: center;
         }
 
-        /* 向きの定義（1: 上り/新宿方面＝左向き、2: 下り/郊外方面＝右向き） */
-        .dir-1 { clip-path: polygon(100% 0, 0 50%, 100% 100%); }
-        .dir-2 { clip-path: polygon(0 0, 100% 50%, 0 100%); }
+        /* 三角形本体（正三角形に近い比率） */
+        .train-shape {
+            width: 20px; height: 18px;
+            filter: drop-shadow(0 0 1px #fff);
+            transition: background-color 0.3s;
+        }
+
+        /* 向きの定義（1: 左向き/上り, 2: 右向き/下り） */
+        .dir-1 .train-shape { clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+        .dir-2 .train-shape { clip-path: polygon(0 0, 100% 50%, 0 100%); }
 
         .train-label {
             position: absolute;
             left: 50%;
-            top: -38px; /* 三角形の頂点に被らないよう調整 */
+            bottom: 22px; /* 三角形の上に配置 */
             transform: translateX(-50%);
             background: rgba(0,0,0,0.65);
             color: #fff;
             padding: 2px 5px;
             border-radius: 2px;
-            font-size: 10px; /* 指定のサイズに復元 */
-            font-weight: 400; /* 指定の太さに復元 */
+            font-size: 10px;
+            font-weight: 400;
             line-height: 1.1;
             white-space: nowrap;
             display: flex;
             flex-direction: column;
-            align-items: flex-start; /* 左揃え */
+            align-items: flex-start;
             pointer-events: none;
             z-index: 110;
         }
 
         .label-row { display: flex; gap: 4px; }
-        .delay-text { color: #ff4444; font-weight: 550; } /* 指定の太さに復元 */
+        .delay-text { color: #ff4444; font-weight: 550; }
         .car-model { color: #00ffcc; font-size: 7.5px; }
 
-        /* 種別カラー */
+        /* 種別カラー（train-shapeに適用） */
         .sy-1 { background-color: #ff4c7c; }
         .sy-2 { background-color: #00b66a; }
         .sy-3 { background-color: #0082ff; }
@@ -73,7 +79,7 @@
 
 <header>
     <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧に戻る</a>
-    <h1 style="font-size:13px; margin:0; font-weight:300;">京王線 リアルタイム配線図 v1.61</h1>
+    <h1 style="font-size:13px; margin:0; font-weight:300;">京王線 リアルタイム配線図 v1.62</h1>
     <div id="status" style="margin-left:auto; font-size:10px; color:#aaa;">接続中...</div>
 </header>
 
@@ -88,7 +94,6 @@
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
 const UNYO_TXT_URL = "unyo/h/8R.txt";
 
-// E008_10: {x: 630, y: 294} を死守
 const posCoords = {
     "E001_1": {x: 149, y: 135}, "E001_2": {x: 149, y: 163}, "E001_3": {x: 149, y: 191},
     "D002":   {x: 366, y: 163}, "U001":   {x: 366, y: 191},
@@ -163,7 +168,7 @@ function getDestName(ik) {
         "001":"新", "033":"N", "002":"笹", "003":"明", "006":"桜", "010":"烏", "012":"つ", "016":"調",
         "018":"飛", "021":"東", "022":"府", "027":"高", "031":"北", "032":"八", "036":"馬", "037":"動",
         "042":"尾", "043":"山", "048":"若", "050":"セ", "052":"沢", "054":"橋", "101":"市", "107":"岩",
-        "112":"住", "114":"島", "118":"瑞", "120":"本", "000":"当止"
+        "112":"住", "114":"島", "118":"瑞", "120":"本", "000":"--", "301":"--"
     };
     return destMap[String(ik)] || ik;
 }
@@ -187,7 +192,7 @@ async function update() {
                 if (base) {
                     activeIds.add(p.tr);
                     const cKey = `${base.x}_${base.y}`;
-                    const offset = (posCounter[cKey] || 0) * 12;
+                    const offset = (posCounter[cKey] || 0) * 14;
                     posCounter[cKey] = (posCounter[cKey] || 0) + 1;
 
                     let el = document.getElementById(`tr-${p.tr}`);
@@ -198,21 +203,22 @@ async function update() {
                         layer.appendChild(el);
                     }
                     
-                    // 向き(ki: 1=左, 2=右)と種別(sy)を反映
-                    el.className = `train sy-${p.sy || '6'} dir-${p.ki || '2'}`;
+                    // 向き(ki)と種別(sy)をクラスで管理
+                    el.className = `train dir-${p.ki || '2'}`;
                     el.style.left = `${base.x + offset}px`;
                     el.style.top = `${base.y}px`;
 
                     const trRaw = String(p.tr).trim();
                     const trNo = trRaw.replace(/^0+/, ''); 
                     const unyo = unyoMap[trRaw] || unyoMap[trNo] || "--";
-                    
                     const model = getCarModel(p.sk);
                     const dest = getDestName(p.ik_tr);
                     const sr = p.sr || "";
                     const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
 
+                    // 三角形本体(train-shape)とラベル(train-label)を分けて挿入
                     el.innerHTML = `
+                        <div class="train-shape sy-${p.sy || '6'}"></div>
                         <div class="train-label">
                             <div class="label-row">
                                 <span>${dest}</span>
@@ -234,7 +240,7 @@ async function update() {
         document.querySelectorAll('.train').forEach(el => {
             if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
         });
-        document.getElementById('status').textContent = "最終更新: " + new Date().toLocaleTimeString();
+        document.getElementById('status').textContent = "更新: " + new Date().toLocaleTimeString();
     } catch (e) { console.error(e); }
 }
 
