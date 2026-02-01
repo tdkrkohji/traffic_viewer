@@ -3,11 +3,10 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>相模原線 リアルタイム配線図 Ver.1.2</title>
-    <script src="unyo_kt.js"></script>
+    <title> Ver.1.9s</title>
     <style>
         :root { --bg: #0f0f0f; --accent: #58a6ff; }
-        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, sans-serif; overflow: hidden; }
+        body { margin: 0; background: var(--bg); color: #fff; font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif; overflow: hidden; }
         
         header {
             height: 50px; padding: 0 15px; background: rgba(0,0,0,0.9);
@@ -17,68 +16,94 @@
 
         .map-wrapper {
             position: absolute; top: 50px; bottom: 0; left: 0; right: 0;
-            overflow: auto; -webkit-overflow-scrolling: touch; background: #000;
+            overflow: auto; background: #000;
         }
 
         .map-content { position: relative; width: 1200px; height: 594px; }
         .map-img { position: absolute; top: 0; left: 0; width: 1200px; height: 594px; display: block; pointer-events: none; }
 
+        /* 列車コンテナ（アニメーション削除） */
         .train {
-            position: absolute; width: 26px; height: 16px;
-            border-radius: 2px; border: 1.5px solid #fff;
-            transform: translate(-50%, -50%); z-index: 100;
-            transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 10px rgba(0,0,0,0.8);
+            position: absolute; width: 14px; height: 14px;
+            z-index: 100;
+            transform: translate(-50%, -50%);
             display: flex; align-items: center; justify-content: center;
         }
 
+        /* 三角形本体（縦12px : 横10px） */
+        .train-shape {
+            width: 10px; height: 12px;
+            filter: drop-shadow(0 0 0.6px #fff);
+            transition: background-color 0.3s;
+        }
+
+        /* 向きの定義 (ki: 0=上り/左向き, 1=下り/右向き) */
+        .dir-0 .train-shape { clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+        .dir-1 .train-shape { clip-path: polygon(0 0, 100% 50%, 0 100%); }
+
+        /* 列車ラベル基本設定 */
         .train-label {
             position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(0,0,0,0.85); color: #fff;
-            padding: 2px 7px; border-radius: 4px;
-            font-size: 10px; font-weight: bold; white-space: nowrap;
-            display: flex; flex-direction: row; align-items: center; gap: 5px; 
-            border: 1px solid #444;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.65);
+            color: #fff;
+            padding: 2px 5px;
+            border-radius: 2px;
+            font-size: 10px;
+            font-weight: 400;
+            line-height: 1.1;
+            white-space: nowrap;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
             pointer-events: none;
             z-index: 110;
         }
 
-        .label-nobori { right: 100%; margin-right: 8px; }
-        .label-kudari { left: 100%; margin-left: 8px; }
+        /* 下り(dir-1)は上に表示 */
+        .dir-1 .train-label {
+            bottom: 15px;
+            top: auto;
+        }
 
-        .delay-text { color: #ff4444; font-weight: 900; }
-        .car-model { color: #00ffcc; font-size: 9px; }
-        .unyo-no { color: #ffeb3b; }
-        .car-sr { color: #aaa; font-size: 9px; } 
-        .dest-text { color: #fff; background: #333; padding: 0 3px; border-radius: 2px; } 
+        /* 上り(dir-0)は下に表示 */
+        .dir-0 .train-label {
+            top: 15px;
+            bottom: auto;
+        }
 
-        .sy-1 { background-color: #ff4c7c; }
-        .sy-2 { background-color: #00b66a; }
-        .sy-3 { background-color: #0082ff; }
-        .sy-5 { background-color: #d8d100; color: #000; }
-        .sy-6 { background-color: #888; }
-        .sy-9, .sy-11 { background-color: #c71585; }
+        .label-row { display: flex; gap: 4px; }
+        .delay-text { color: #ff4444; font-weight: 470; }
+        .car-model { color: #00ffcc; font-size: 6.5px; }
+
+        /* 種別カラー */
+        .train-shape.sy-1 { background-color: #f4233c; }
+        .train-shape.sy-2 { background-color: #1cb648; }
+        .train-shape.sy-3 { background-color: #0082ff; }
+        .train-shape.sy-5 { background-color: #d6e500; color: #000; }
+        .train-shape.sy-6 { background-color: #888; }
+        .train-shape.sy-9, .train-shape.sy-11 { background-color: #f00095; }
     </style>
 </head>
 <body>
 
 <header>
     <a href="index.html" style="color:var(--accent); text-decoration:none; margin-right:15px; font-size:13px;">← 一覧に戻る</a>
-    <h1 style="font-size:14px; margin:0;">京王 相模原線 リアルタイム配線図</h1>
-    <div id="status" style="margin-left:auto; font-size:11px; color:#aaa;">接続中...</div>
+    <h1 style="font-size:13px; margin:0; font-weight:300;">v1.9</h1>
+    <div id="status" style="margin-left:auto; font-size:10px; color:#aaa;">接続中...</div>
 </header>
 
 <div class="map-wrapper">
     <div class="map-content" id="mapContent">
-        <img src="image_sagamihara.png" class="map-img">
+        <img src="sagamihara_new.png" class="map-img">
         <div id="trainLayer"></div>
     </div>
 </div>
 
 <script>
 const FEED_URL = "https://i.opentidkeio.jp/data/traffic_info.json";
+const UNYO_TXT_URL = "unyo/h/8R.txt";
 
 const posCoords = {
     // 相模原線専用座標
@@ -106,6 +131,31 @@ const posCoords = {
     "E054_1": {x: 891, y: 386}, "E054_2": {x: 891, y: 413}
 };
 
+
+let unyoMap = {};
+
+async function fetchUnyoData() {
+    try {
+        const res = await fetch(UNYO_TXT_URL + "?" + Date.now());
+        const text = await res.text();
+        const lines = text.split(/\r?\n/);
+        let currentTrains = [];
+        const newMap = {};
+        lines.forEach(line => {
+            const l = line.trim();
+            if (!l) return;
+            if (l.includes('［') || l.includes('[')) {
+                currentTrains = l.replace(/[［］\[\]]/g, '').split(',').map(t => t.trim().replace('T', ''));
+            } else if (l.startsWith('=')) {
+                const u = l.substring(1).trim();
+                currentTrains.forEach(tr => { if(tr) newMap[tr] = u; });
+                currentTrains = [];
+            }
+        });
+        unyoMap = newMap;
+    } catch (e) { console.error(e); }
+}
+
 function getCarModel(sk) {
     const models = { "2":"2000", "5":"5000", "7":"7000", "8":"8000", "9":"9000", "0":"10-300" };
     return models[String(sk)] || "";
@@ -116,22 +166,13 @@ function getDestName(ik) {
         "001":"新", "033":"N", "002":"笹", "003":"明", "006":"桜", "010":"烏", "012":"つ", "016":"調",
         "018":"飛", "021":"東", "022":"府", "027":"高", "031":"北", "032":"八", "036":"馬", "037":"動",
         "042":"尾", "043":"山", "048":"若", "050":"セ", "052":"沢", "054":"橋", "101":"市", "107":"岩",
-        "112":"住", "114":"島", "118":"瑞", "120":"本"
+        "112":"住", "114":"島", "118":"瑞", "120":"本", "000":"当止"
     };
     return destMap[String(ik)] || ik;
 }
 
-function getUnyoFromJS(trNo) {
-    if (typeof data === 'undefined') return null;
-    for (const [unyoName, trainList] of Object.entries(data)) {
-        if (trainList.includes(String(trNo))) {
-            return unyoName;
-        }
-    }
-    return null;
-}
-
 async function update() {
+    await fetchUnyoData();
     try {
         const res = await fetch(FEED_URL + "?" + Date.now());
         const json = await res.json();
@@ -149,7 +190,7 @@ async function update() {
                 if (base) {
                     activeIds.add(p.tr);
                     const cKey = `${base.x}_${base.y}`;
-                    const offset = (posCounter[cKey] || 0) * 10;
+                    const offset = (posCounter[cKey] || 0) * 12;
                     posCounter[cKey] = (posCounter[cKey] || 0) + 1;
 
                     let el = document.getElementById(`tr-${p.tr}`);
@@ -160,25 +201,36 @@ async function update() {
                         layer.appendChild(el);
                     }
                     
-                    el.className = `train sy-${p.sy || '6'}`;
+                    let direction = String(p.ki);
+                    if (direction !== '0' && direction !== '1') direction = '1';
+
+                    el.className = `train dir-${direction}`;
                     el.style.left = `${base.x + offset}px`;
                     el.style.top = `${base.y}px`;
 
+                    const trRaw = String(p.tr).trim();
+                    const trNo = trRaw.replace(/^0+/, ''); 
+                    const unyo = unyoMap[trRaw] || unyoMap[trNo] || "--";
                     const model = getCarModel(p.sk);
-                    const unyo = getUnyoFromJS(p.tr) || "--";
                     const dest = getDestName(p.ik_tr);
-                    const sr = p.sr ? `${p.sr}両` : "";
+                    const sr = p.sr || "";
                     const delayHtml = (p.dl && parseInt(p.dl) > 0) ? `<span class="delay-text">+${p.dl}</span>` : "";
-                    const dirClass = (String(p.ki) === "1") ? "label-nobori" : "label-kudari";
 
                     el.innerHTML = `
-                        <div class="train-label ${dirClass}">
-                            <span class="car-model">${model}</span>
-                            <span class="unyo-no">${unyo}</span>
-                            <span class="car-sr">${sr}</span>
-                            <span class="dest-text">${dest}</span>
-                            <span>${p.tr}</span>
-                            ${delayHtml}
+                        <div class="train-shape sy-${p.sy || '6'}"></div>
+                        <div class="train-label">
+                            <div class="label-row">
+                                <span>${dest}</span>
+                                <span>${p.tr}</span>
+                                <span>${unyo}</span>
+                            </div>
+                            <div class="label-row">
+                                <span>${sr}</span>
+                                ${delayHtml}
+                            </div>
+                            <div class="label-row car-model">
+                                <span>${model}</span>
+                            </div>
                         </div>`;
                 }
             });
@@ -187,7 +239,7 @@ async function update() {
         document.querySelectorAll('.train').forEach(el => {
             if (!activeIds.has(el.id.replace('tr-', ''))) el.remove();
         });
-        document.getElementById('status').textContent = "最終更新: " + new Date().toLocaleTimeString();
+        document.getElementById('status').textContent = "更新: " + new Date().toLocaleTimeString();
     } catch (e) { console.error(e); }
 }
 
